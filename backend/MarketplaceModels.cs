@@ -35,6 +35,7 @@ public enum OrderStatus
 public sealed class UserAccount
 {
     public string Id { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public UserRole Role { get; set; }
     public bool MealExchangeAvailable { get; set; }
@@ -155,10 +156,31 @@ public sealed class WithdrawFundsRequest
     public decimal Amount { get; set; }
 }
 
+public sealed class SignupRequest
+{
+    public string Email { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+    public UserRole Role { get; set; }
+    public string Headline { get; set; } = string.Empty;
+}
+
+public sealed class LoginRequest
+{
+    public string Email { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+}
+
 public sealed class SupabaseUserRow
 {
     [JsonPropertyName("id")]
     public string Id { get; set; } = string.Empty;
+
+    [JsonPropertyName("email")]
+    public string Email { get; set; } = string.Empty;
+
+    [JsonPropertyName("password_hash")]
+    public string PasswordHash { get; set; } = string.Empty;
 
     [JsonPropertyName("name")]
     public string Name { get; set; } = string.Empty;
