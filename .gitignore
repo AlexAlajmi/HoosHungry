@@ -1,0 +1,24 @@
+# .NET build outputs
+**/bin/
+**/obj/
+
+# Visual Studio / Rider
+.vs/
+*.user
+*.suo
+.idea/
+
+# Node / frontend build outputs
+**/node_modules/
+**/dist/
+**/dist-ssr/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS files
+.DS_Store
