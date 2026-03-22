@@ -94,8 +94,11 @@ public static class MarketplaceData
                 StringComparer.OrdinalIgnoreCase
             );
 
-        var sellers = users.Where(user => user.Role == UserRole.Seller).ToList();
-        var buyers = users.Where(user => user.Role == UserRole.Buyer).ToList();
+        // A single account can participate as either buyer or seller in the UI,
+        // so expose every user in both lists and use availability to determine
+        // who is currently open to receiving seller requests.
+        var sellers = users.ToList();
+        var buyers = users.ToList();
         var offers = offersTask.Result.Select(row => ToOffer(row, userLookup)).ToList();
         var orders = ordersTask.Result.Select(row => ToOrder(row, userLookup, trackingByOrderId)).ToList();
         var notifications = notificationsTask.Result.Select(ToNotification).ToList();

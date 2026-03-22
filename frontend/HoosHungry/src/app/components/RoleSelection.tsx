@@ -4,13 +4,14 @@ import { Button } from './ui/button';
 import { ShoppingBag, Coins } from 'lucide-react';
 
 interface RoleSelectionProps {
+  onProfileClick: () => void;
   onSelectRole: (role: 'buyer' | 'seller') => void;
 }
 
-export default function RoleSelection({ onSelectRole }: RoleSelectionProps) {
+export default function RoleSelection({ onProfileClick, onSelectRole }: RoleSelectionProps) {
   return (
     <div className="min-h-screen bg-[#efefef]">
-      <AppNavbar />
+      <AppNavbar onProfileClick={onProfileClick} />
       <div className="flex items-center justify-center p-6">
         <div className="max-w-4xl w-full">
           <div className="text-center mb-12">

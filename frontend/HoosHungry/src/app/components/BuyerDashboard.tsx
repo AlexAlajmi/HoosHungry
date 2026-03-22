@@ -8,6 +8,7 @@ import { ArrowLeft, Plus } from 'lucide-react';
 
 interface BuyerDashboardProps {
   onBack: () => void;
+  onProfileClick: () => void;
   onCreateRequest: (request: { item: string; price: number; location: string }) => void;
   activeRequests: any[];
   onViewExchange: (exchangeId: string) => void;
@@ -35,7 +36,7 @@ const LOCATIONS = [
   'Clemons Library'
 ];
 
-export default function BuyerDashboard({ onBack, onCreateRequest, activeRequests, onViewExchange }: BuyerDashboardProps) {
+export default function BuyerDashboard({ onBack, onProfileClick, onCreateRequest, activeRequests, onViewExchange }: BuyerDashboardProps) {
   const [showForm, setShowForm] = useState(false);
   const [selectedItem, setSelectedItem] = useState('');
   const [price, setPrice] = useState('');
@@ -57,7 +58,7 @@ export default function BuyerDashboard({ onBack, onCreateRequest, activeRequests
 
   return (
     <div className="min-h-screen bg-[#efefef]">
-      <AppNavbar />
+      <AppNavbar onProfileClick={onProfileClick} />
       <div className="max-w-4xl mx-auto p-6">
         <div className="flex items-center gap-4 mb-6">
           <Button onClick={onBack} variant="ghost" size="icon">

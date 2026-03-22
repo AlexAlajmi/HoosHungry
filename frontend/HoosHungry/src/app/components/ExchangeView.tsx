@@ -8,6 +8,7 @@ import { ArrowLeft, MapPin, Clock, CheckCircle2, User } from 'lucide-react';
 
 interface ExchangeViewProps {
   onBack: () => void;
+  onProfileClick: () => void;
   exchange: any;
   userRole: 'buyer' | 'seller';
   onProposeMeetup: (meetupDetails: { time: string; location: string; notes: string }) => void;
@@ -16,6 +17,7 @@ interface ExchangeViewProps {
 
 export default function ExchangeView({
   onBack,
+  onProfileClick,
   exchange,
   userRole,
   onProposeMeetup,
@@ -41,7 +43,7 @@ export default function ExchangeView({
 
   return (
     <div className="min-h-screen bg-[#efefef]">
-      <AppNavbar />
+      <AppNavbar onProfileClick={onProfileClick} />
       <div className="max-w-2xl mx-auto p-6">
         <div className="flex items-center gap-4 mb-6">
           <Button onClick={onBack} variant="ghost" size="icon">

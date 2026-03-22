@@ -26,7 +26,9 @@ public static class OfferEndpoints
             var state = await MarketplaceData.LoadDashboardStateAsync(client, settings, cancellationToken);
             var buyer = state.Buyers.SingleOrDefault(user => user.Id == request.BuyerId)
                 ?? throw new InvalidOperationException("Buyer not found.");
-            var availableSellers = state.Sellers.Where(user => user.MealExchangeAvailable).ToList();
+            var availableSellers = state.Sellers
+                .Where(user => user.MealExchangeAvailable && user.Id != buyer.Id)
+                .ToList();
 
             if (availableSellers.Count == 0)
             {

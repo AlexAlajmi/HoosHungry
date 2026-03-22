@@ -1,6 +1,7 @@
 import { useState } from "react";
 import HomePage from "./components/HomePage";
 import AuthScreen, { type AuthUser } from "./components/AuthScreen";
+import ProfilePage from "./components/ProfilePage";
 import RoleSelection from "./components/RoleSelection";
 import BuyerDashboard from "./components/BuyerDashboard";
 import SellerDashboard from "./components/SellerDashboard";
@@ -8,9 +9,12 @@ import ExchangeView from "./components/ExchangeView";
 import { toast } from "sonner";
 import { Toaster } from "./components/ui/sonner";
 
+const API_BASE = "http://localhost:5009/api";
+
 type Screen =
   | "home"
   | "auth"
+  | "profile"
   | "role-selection"
   | "buyer"
   | "seller"
@@ -88,6 +92,7 @@ function generateMockRequests(): Request[] {
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>("home");
+  const [previousScreen, setPreviousScreen] = useState<Screen>("role-selection");
   const [userRole, setUserRole] = useState<
     "buyer" | "seller" | null
   >(null);
@@ -119,6 +124,22 @@ export default function App() {
     setScreen("auth");
   };
 
+  const openProfile = () => {
+    if (
+      screen === "role-selection" ||
+      screen === "buyer" ||
+      screen === "seller" ||
+      screen === "exchange"
+    ) {
+      setPreviousScreen(screen);
+    }
+    setScreen("profile");
+  };
+
+  const closeProfile = () => {
+    setScreen(previousScreen);
+  };
+
   const handleAuthenticated = (user: AuthUser) => {
     setCurrentUser(user);
     setUserRole(null);
@@ -127,6 +148,45 @@ export default function App() {
     setScreen("role-selection");
     toast.success(
       `Signed in as ${user.name}.`,
+    );
+  };
+
+  const handleSetSellingMode = async (nextValue: boolean) => {
+    if (!currentUser) {
+      return;
+    }
+
+    const response = await fetch(
+      `${API_BASE}/sellers/${currentUser.id}/availability`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isAvailable: nextValue }),
+      },
+    );
+
+    const payload =
+      ((await response.json().catch(() => null)) as
+        | { error?: string }
+        | null) ?? null;
+
+    if (!response.ok) {
+      const message =
+        payload?.error ?? "Unable to update selling mode.";
+      toast.error(message);
+      throw new Error(message);
+    }
+
+    setCurrentUser((prev) =>
+      prev
+        ? { ...prev, mealExchangeAvailable: nextValue }
+        : prev,
+    );
+
+    toast.success(
+      nextValue
+        ? "Selling mode is live."
+        : "Selling mode is paused.",
     );
   };
 
@@ -305,13 +365,26 @@ export default function App() {
           />
         )}
 
+        {screen === "profile" && currentUser && (
+          <ProfilePage
+            onBack={closeProfile}
+            onProfileClick={openProfile}
+            onSetSellingMode={handleSetSellingMode}
+            user={currentUser}
+          />
+        )}
+
         {screen === "role-selection" && (
-          <RoleSelection onSelectRole={handleSelectRole} />
+          <RoleSelection
+            onProfileClick={openProfile}
+            onSelectRole={handleSelectRole}
+          />
         )}
 
         {screen === "buyer" && (
           <BuyerDashboard
             onBack={handleBackToRoleSelection}
+            onProfileClick={openProfile}
             onCreateRequest={handleCreateRequest}
             activeRequests={myRequests}
             onViewExchange={handleViewExchange}
@@ -321,6 +394,11 @@ export default function App() {
         {screen === "seller" && (
           <SellerDashboard
             onBack={handleBackToRoleSelection}
+            isSellingModeEnabled={
+              currentUser?.mealExchangeAvailable ?? false
+            }
+            onProfileClick={openProfile}
+            onSetSellingMode={handleSetSellingMode}
             availableRequests={requests.filter(
               (r) => r.status === "pending",
             )}
@@ -336,6 +414,7 @@ export default function App() {
           getSelectedExchange() && (
             <ExchangeView
               onBack={handleBackFromExchange}
+              onProfileClick={openProfile}
               exchange={getSelectedExchange()!}
               userRole={userRole!}
               onProposeMeetup={handleProposeMeetup}

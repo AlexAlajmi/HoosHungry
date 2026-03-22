@@ -1,11 +1,15 @@
 import AppNavbar from './AppNavbar';
+import SellingModeControl from './SellingModeControl';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { ArrowLeft, DollarSign } from 'lucide-react';
 
 interface SellerDashboardProps {
   onBack: () => void;
+  onProfileClick: () => void;
+  onSetSellingMode: (nextValue: boolean) => Promise<void>;
   availableRequests: any[];
+  isSellingModeEnabled: boolean;
   onAcceptRequest: (requestId: string) => void;
   myAcceptedRequests: any[];
   onViewExchange: (exchangeId: string) => void;
@@ -14,7 +18,10 @@ interface SellerDashboardProps {
 
 export default function SellerDashboard({
   onBack,
+  onProfileClick,
+  onSetSellingMode,
   availableRequests,
+  isSellingModeEnabled,
   onAcceptRequest,
   myAcceptedRequests,
   onViewExchange,
@@ -22,7 +29,7 @@ export default function SellerDashboard({
 }: SellerDashboardProps) {
   return (
     <div className="min-h-screen bg-[#efefef]">
-      <AppNavbar />
+      <AppNavbar onProfileClick={onProfileClick} />
       <div className="max-w-4xl mx-auto p-6">
         <div className="flex items-center gap-4 mb-6">
           <Button onClick={onBack} variant="ghost" size="icon">
@@ -40,6 +47,13 @@ export default function SellerDashboard({
             <DollarSign className="h-12 w-12 opacity-80" />
           </div>
         </Card>
+
+        <div className="mb-6">
+          <SellingModeControl
+            isEnabled={isSellingModeEnabled}
+            onChange={onSetSellingMode}
+          />
+        </div>
 
         <div className="mb-8">
           <h2 className="font-bold text-xl mb-4">Available Requests</h2>

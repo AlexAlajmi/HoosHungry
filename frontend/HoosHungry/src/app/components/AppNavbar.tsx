@@ -4,10 +4,12 @@ import logoImage from "../../assets/5136746a46ed76cbb1efd9b3e613bfce3aaf02de.png
 import { Button } from "./ui/button";
 
 interface AppNavbarProps {
+  onProfileClick?: () => void;
   profileLabel?: string;
 }
 
 export default function AppNavbar({
+  onProfileClick,
   profileLabel = "Profile",
 }: AppNavbarProps) {
   return (
@@ -29,6 +31,7 @@ export default function AppNavbar({
 
         <Button
           className="h-10 rounded-[6px] bg-[#fd6500] px-4 text-white hover:bg-[#e55a00]"
+          onClick={onProfileClick}
           type="button"
         >
           <User className="mr-2 h-4 w-4" />
