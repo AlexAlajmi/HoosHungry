@@ -3,7 +3,7 @@ import AppNavbar from './AppNavbar';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card } from './ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from './ui/select';
 import { ArrowLeft, Plus } from 'lucide-react';
 import type { BuyerRequestSummary, NotificationItem } from '../types';
 
@@ -20,25 +20,86 @@ interface BuyerDashboardProps {
   onViewExchange: (exchangeId: string) => void;
 }
 
-const MENU_ITEMS = [
-  'Burger & Fries',
-  'Pizza Slice',
-  'Sandwich',
-  'Salad',
-  'Pasta Bowl',
-  'Burrito',
-  'Sushi Roll',
-  'Chicken Tenders',
-  'Quesadilla',
-  'Stir Fry'
+const RESTAURANT_MENUS: { restaurant: string; items: string[] }[] = [
+  {
+    restaurant: "Hoos Hot Chicken",
+    items: [
+      "3pc tenders with fries",
+      "Nashville hot chicken sando with fries",
+      "4pc breaded wings with fries",
+    ],
+  },
+  {
+    restaurant: "Twisted Tortilla",
+    items: [
+      "Steak quesadilla",
+      "Cheese quesadilla",
+      "Chicken quesadilla",
+      "3 chicken tacos",
+      "3 steak tacos",
+      "3 veggie tacos",
+    ],
+  },
+  {
+    restaurant: "Rice Bowl Express",
+    items: [
+      "Chicken pita wrap",
+      "Gyro pita wrap",
+      "Falafel pita wrap",
+      "Chicken over rice",
+      "Gyro over rice",
+      "Falafel over rice",
+    ],
+  },
+  {
+    restaurant: "Za'Atar at The Castle",
+    items: ["Build your bowl", "Build your wrap"],
+  },
+  {
+    restaurant: "Daily Dose",
+    items: [
+      "Small hot coffee with pastry",
+      "Bacon, egg & cheese croissant",
+      "Egg & cheese croissant",
+      "3 pack chicken tenders",
+      "Corndog",
+      "Caesar salad",
+    ],
+  },
+  {
+    restaurant: "West Range Cafe",
+    items: [
+      "Bacon, egg & cheese croissant",
+      "Egg & cheese croissant",
+      "3 pack chicken tenders",
+    ],
+  },
+  {
+    restaurant: "Einstein Bros. Bagels - Rice Hall",
+    items: [
+      "Cheddar & egg sandwich",
+      "Turkey sausage & cheddar egg sandwich",
+      "Cinnamon muffin",
+    ],
+  },
+  {
+    restaurant: "Subway - Newcomb Hall",
+    items: [
+      "6 in. Black Forest ham",
+      "6 in. Turkey breast",
+      "6 in. Veggie Delite",
+    ],
+  },
 ];
 
 const LOCATIONS = [
   'Newcomb Hall',
   'Observatory Hill Dining',
-  'Runk Dining Hall',
-  'The Corner',
+  'The Castle',
   'Rice Hall',
+  'West Range',
+  'The Corner',
+  'Runk Dining Hall',
   'Clemons Library'
 ];
 
@@ -111,8 +172,15 @@ export default function BuyerDashboard({
                     <SelectValue placeholder="Choose an item" />
                   </SelectTrigger>
                   <SelectContent>
-                    {MENU_ITEMS.map(item => (
-                      <SelectItem key={item} value={item}>{item}</SelectItem>
+                    {RESTAURANT_MENUS.map(({ restaurant, items }) => (
+                      <SelectGroup key={restaurant}>
+                        <SelectLabel className="font-bold text-[#fd6500]">{restaurant}</SelectLabel>
+                        {items.map(item => (
+                          <SelectItem key={`${restaurant}-${item}`} value={`${item} (${restaurant})`}>
+                            {item}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
                     ))}
                   </SelectContent>
                 </Select>
