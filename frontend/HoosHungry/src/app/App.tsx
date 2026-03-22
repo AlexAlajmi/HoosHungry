@@ -636,11 +636,15 @@ export default function App() {
   };
 
   const handleConfirmOrder = async (orderId: string) => {
+    const toastId = toast.loading("Confirming order...");
+
     try {
       const nextState = await confirmOrder(orderId);
       applyDashboardState(nextState);
+      toast.dismiss(toastId);
       toast.success("Order confirmed.");
     } catch (error) {
+      toast.dismiss(toastId);
       const message =
         error instanceof Error
           ? error.message
@@ -655,11 +659,15 @@ export default function App() {
       return;
     }
 
+    const toastId = toast.loading("Completing exchange...");
+
     try {
       const nextState = await completeOrder(orderId, currentUser.id);
       applyDashboardState(nextState);
+      toast.dismiss(toastId);
       toast.success("Exchange marked complete.");
     } catch (error) {
+      toast.dismiss(toastId);
       const message =
         error instanceof Error
           ? error.message
@@ -675,6 +683,8 @@ export default function App() {
     detail: string,
     estimatedReadyAtUtc?: string | null,
   ) => {
+    const toastId = toast.loading("Updating status...");
+
     try {
       const nextState = await updateOrderTracking(
         orderId,
@@ -683,12 +693,14 @@ export default function App() {
         estimatedReadyAtUtc,
       );
       applyDashboardState(nextState);
+      toast.dismiss(toastId);
       toast.success(
         status === "Completed"
           ? "Exchange marked complete."
           : "Tracking updated.",
       );
     } catch (error) {
+      toast.dismiss(toastId);
       const message =
         error instanceof Error
           ? error.message

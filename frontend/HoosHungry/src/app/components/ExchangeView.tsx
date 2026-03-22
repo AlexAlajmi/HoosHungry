@@ -4,7 +4,7 @@ import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
-import { ArrowLeft, MapPin, Clock, CheckCircle2, User } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, CheckCircle2, Loader2, User } from 'lucide-react';
 import type { NotificationItem, OrderRecord, OrderStatus } from '../types';
 
 interface ExchangeViewProps {
@@ -43,18 +43,51 @@ export default function ExchangeView({
 }: ExchangeViewProps) {
   const [trackingNote, setTrackingNote] = useState('');
   const [etaInput, setEtaInput] = useState('');
+  const [pendingAction, setPendingAction] = useState<
+    "confirm-order" | "ready-soon" | "ready-for-pickup" | "complete-order" | null
+  >(null);
 
   const isComplete = exchange.status === 'Completed';
   const canManageTracking =
     userRole === 'seller' && exchange.grubhubConfirmed && !isComplete;
 
-  const handleTrackingUpdate = (status: OrderStatus, fallbackDetail: string) => {
-    return onUpdateTracking(
-      exchange.id,
-      status,
-      trackingNote.trim() || fallbackDetail,
-      etaInput ? new Date(etaInput).toISOString() : null,
-    );
+  const handleTrackingUpdate = async (
+    action: "ready-soon" | "ready-for-pickup",
+    status: OrderStatus,
+    fallbackDetail: string,
+  ) => {
+    setPendingAction(action);
+
+    try {
+      await onUpdateTracking(
+        exchange.id,
+        status,
+        trackingNote.trim() || fallbackDetail,
+        etaInput ? new Date(etaInput).toISOString() : null,
+      );
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  const handleConfirmOrderClick = async () => {
+    setPendingAction("confirm-order");
+
+    try {
+      await onConfirmOrder(exchange.id);
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  const handleCompleteOrderClick = async () => {
+    setPendingAction("complete-order");
+
+    try {
+      await onCompleteOrder(exchange.id);
+    } finally {
+      setPendingAction(null);
+    }
   };
 
   return (
@@ -148,10 +181,18 @@ export default function ExchangeView({
                   Once you have the meal exchange ready to place, confirm it here to move the order into active tracking.
                 </p>
                 <Button
-                  onClick={() => onConfirmOrder(exchange.id)}
+                  disabled={pendingAction !== null}
+                  onClick={() => void handleConfirmOrderClick()}
                   className="w-full bg-[#fd6500] hover:bg-[#e55a00] h-12"
                 >
-                  Confirm Order in GrubHub
+                  {pendingAction === "confirm-order" ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      Confirming...
+                    </>
+                  ) : (
+                    "Confirm Order in GrubHub"
+                  )}
                 </Button>
               </Card>
             )}
@@ -181,26 +222,44 @@ export default function ExchangeView({
                   </div>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <Button
+                      disabled={pendingAction !== null}
                       className="bg-[#fd6500] hover:bg-[#e55a00]"
                       onClick={() =>
-                        handleTrackingUpdate(
+                        void handleTrackingUpdate(
+                          'ready-soon',
                           'ReadySoon',
                           'Order should be ready soon.'
                         )
                       }
                     >
-                      Mark Ready Soon
+                      {pendingAction === "ready-soon" ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Updating...
+                        </>
+                      ) : (
+                        "Mark Ready Soon"
+                      )}
                     </Button>
                     <Button
+                      disabled={pendingAction !== null}
                       className="bg-blue-600 hover:bg-blue-700"
                       onClick={() =>
-                        handleTrackingUpdate(
+                        void handleTrackingUpdate(
+                          'ready-for-pickup',
                           'ReadyForPickup',
                           'Meal exchange is ready for pickup.'
                         )
                       }
                     >
-                      Mark Ready
+                      {pendingAction === "ready-for-pickup" ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Updating...
+                        </>
+                      ) : (
+                        "Mark Ready"
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -238,11 +297,21 @@ export default function ExchangeView({
                   The seller marked the meal exchange ready. After you receive the meal, confirm pickup here to complete the exchange.
                 </p>
                 <Button
-                  onClick={() => onCompleteOrder(exchange.id)}
+                  disabled={pendingAction !== null}
+                  onClick={() => void handleCompleteOrderClick()}
                   className="w-full bg-green-600 hover:bg-green-700 h-12"
                 >
-                  <CheckCircle2 className="h-5 w-5 mr-2" />
-                  Confirm Pickup
+                  {pendingAction === "complete-order" ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      Confirming...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="h-5 w-5 mr-2" />
+                      Confirm Pickup
+                    </>
+                  )}
                 </Button>
               </Card>
             )}
