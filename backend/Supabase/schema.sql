@@ -1,5 +1,7 @@
 create table if not exists public.marketplace_users (
     id text primary key,
+    email text not null unique,
+    password_hash text not null,
     name text not null,
     role text not null check (role in ('Seller', 'Buyer')),
     meal_exchange_available boolean not null default false,
@@ -58,13 +60,13 @@ create table if not exists public.withdrawals (
     created_at timestamptz not null
 );
 
-insert into public.marketplace_users (id, name, role, meal_exchange_available, wallet_balance, headline)
+insert into public.marketplace_users (id, email, password_hash, name, role, meal_exchange_available, wallet_balance, headline)
 values
-    ('seller-1', 'Ava Carter', 'Seller', true, 18.50, 'Usually near Newcomb Hall until 6:30 PM'),
-    ('seller-2', 'Noah Kim', 'Seller', false, 27.00, 'Prefers quick handoff at O''Hill'),
-    ('seller-3', 'Jules Park', 'Seller', true, 9.75, 'Often accepts dinner requests after 5:00 PM'),
-    ('buyer-1', 'Riley Moss', 'Buyer', false, 0, 'Needs quick lunch turnaround'),
-    ('buyer-2', 'Sam Rivera', 'Buyer', false, 0, 'Usually buying dinner on late lab nights')
+    ('seller-1', 'ava@virginia.edu', 'demo', 'Ava Carter', 'Seller', true, 18.50, 'Usually near Newcomb Hall until 6:30 PM'),
+    ('seller-2', 'noah@virginia.edu', 'demo', 'Noah Kim', 'Seller', false, 27.00, 'Prefers quick handoff at O''Hill'),
+    ('seller-3', 'jules@virginia.edu', 'demo', 'Jules Park', 'Seller', true, 9.75, 'Often accepts dinner requests after 5:00 PM'),
+    ('buyer-1', 'riley@virginia.edu', 'demo', 'Riley Moss', 'Buyer', false, 0, 'Needs quick lunch turnaround'),
+    ('buyer-2', 'sam@virginia.edu', 'demo', 'Sam Rivera', 'Buyer', false, 0, 'Usually buying dinner on late lab nights')
 on conflict (id) do nothing;
 
 alter table public.marketplace_users enable row level security;

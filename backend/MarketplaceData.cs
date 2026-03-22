@@ -315,6 +315,55 @@ public static class MarketplaceData
         );
     }
 
+    public static async Task<SupabaseUserRow?> GetUserRowByEmailAsync(
+        HttpClient client,
+        SupabaseSettings settings,
+        string email,
+        CancellationToken cancellationToken)
+    {
+        var rows = await GetRowsAsync<SupabaseUserRow>(
+            client,
+            settings,
+            "marketplace_users",
+            new Dictionary<string, string> { ["email"] = $"eq.{email}", ["limit"] = "1" },
+            cancellationToken
+        );
+        return rows.Count > 0 ? rows[0] : null;
+    }
+
+    public static async Task<UserAccount> InsertUserAsync(
+        HttpClient client,
+        SupabaseSettings settings,
+        string email,
+        string passwordHash,
+        string name,
+        UserRole role,
+        string headline,
+        CancellationToken cancellationToken)
+    {
+        var rows = await InsertRowsAsync<SupabaseUserRow>(
+            client,
+            settings,
+            "marketplace_users",
+            new[]
+            {
+                new
+                {
+                    id = NewId("user"),
+                    email,
+                    password_hash = passwordHash,
+                    name,
+                    role = role.ToString(),
+                    meal_exchange_available = false,
+                    wallet_balance = 0m,
+                    headline,
+                },
+            },
+            cancellationToken
+        );
+        return ToUser(rows[0]);
+    }
+
     public static string BuildTrackingLabel(OrderStatus status)
     {
         return status switch
@@ -455,11 +504,12 @@ public static class MarketplaceData
         }
     }
 
-    private static UserAccount ToUser(SupabaseUserRow row)
+    public static UserAccount ToUser(SupabaseUserRow row)
     {
         return new UserAccount
         {
             Id = row.Id,
+            Email = row.Email,
             Name = row.Name,
             Role = ParseEnum<UserRole>(row.Role),
             MealExchangeAvailable = row.MealExchangeAvailable,

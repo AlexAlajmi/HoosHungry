@@ -6,6 +6,7 @@ public static class MarketplaceApi
     {
         var api = app.MapGroup("/api");
 
+        api.MapAuthEndpoints();
         api.MapStateEndpoints();
         api.MapSellerEndpoints();
         api.MapOfferEndpoints();
