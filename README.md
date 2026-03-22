@@ -4,7 +4,9 @@ HoosHungry is a student meal-exchange marketplace. Buyers can request meals, sel
 
 [Demo Link](https://www.youtube.com/watch?v=W-Gr6ZOkuhY)
 
-## Run Locally
+
+
+## Running Locally:
 
 ### Prerequisites
 
