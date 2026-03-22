@@ -28,6 +28,10 @@ export default function LandingPage({
           />
         </div>
       </div>
+      <p className="absolute font-['Inter:Bold',sans-serif] font-bold leading-none left-[164px] not-italic text-[30px] text-black top-[25px] whitespace-nowrap">
+        <span className="text-[#fd6500]">hoos</span>
+        <span>hungry</span>
+      </p>
       <p className="absolute font-['Inter:Bold',sans-serif] font-bold leading-none left-[356px] not-italic text-[32px] text-black top-[238px] whitespace-nowrap">Buy meals. Sell swipes. Save Money.</p>
       <p className="absolute font-['Inter:Bold',sans-serif] font-bold leading-[0] left-[541px] not-italic text-[32px] text-black top-[196px] whitespace-nowrap">
         <span className="leading-none text-[#fd6500]">hoos</span>
