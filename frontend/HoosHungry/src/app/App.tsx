@@ -1,6 +1,7 @@
 import { useState } from "react";
 import HomePage from "./components/HomePage";
 import AuthScreen, { type AuthUser } from "./components/AuthScreen";
+import RoleSelection from "./components/RoleSelection";
 import BuyerDashboard from "./components/BuyerDashboard";
 import SellerDashboard from "./components/SellerDashboard";
 import ExchangeView from "./components/ExchangeView";
@@ -10,6 +11,7 @@ import { Toaster } from "./components/ui/sonner";
 type Screen =
   | "home"
   | "auth"
+  | "role-selection"
   | "buyer"
   | "seller"
   | "exchange";
@@ -118,16 +120,19 @@ export default function App() {
   };
 
   const handleAuthenticated = (user: AuthUser) => {
-    const role = user.role === "Seller" ? "seller" : "buyer";
-
     setCurrentUser(user);
-    setUserRole(role);
+    setUserRole(null);
     setSellerBalance(user.walletBalance ?? 0);
     resetMarketplaceState();
-    setScreen(role);
+    setScreen("role-selection");
     toast.success(
       `Signed in as ${user.name}.`,
     );
+  };
+
+  const handleSelectRole = (role: "buyer" | "seller") => {
+    setUserRole(role);
+    setScreen(role);
   };
 
   const handleCreateRequest = (requestData: {
@@ -271,12 +276,9 @@ export default function App() {
     setScreen(userRole!);
   };
 
-  const handleLogout = () => {
-    setCurrentUser(null);
-    setUserRole(null);
-    setSellerBalance(0);
-    resetMarketplaceState();
-    setScreen("auth");
+  const handleBackToRoleSelection = () => {
+    setSelectedExchangeId(null);
+    setScreen("role-selection");
   };
 
   const getSelectedExchange = (): Request | null => {
@@ -303,9 +305,13 @@ export default function App() {
           />
         )}
 
+        {screen === "role-selection" && (
+          <RoleSelection onSelectRole={handleSelectRole} />
+        )}
+
         {screen === "buyer" && (
           <BuyerDashboard
-            onBack={handleLogout}
+            onBack={handleBackToRoleSelection}
             onCreateRequest={handleCreateRequest}
             activeRequests={myRequests}
             onViewExchange={handleViewExchange}
@@ -314,7 +320,7 @@ export default function App() {
 
         {screen === "seller" && (
           <SellerDashboard
-            onBack={handleLogout}
+            onBack={handleBackToRoleSelection}
             availableRequests={requests.filter(
               (r) => r.status === "pending",
             )}
