@@ -2,6 +2,14 @@ import { useState } from 'react';
 import AppNavbar from './AppNavbar';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { ArrowLeft, MapPin, Clock, CheckCircle2, Loader2, User } from 'lucide-react';
@@ -43,13 +51,17 @@ export default function ExchangeView({
 }: ExchangeViewProps) {
   const [trackingNote, setTrackingNote] = useState('');
   const [etaInput, setEtaInput] = useState('');
+  const [readyForPickupDialogOpen, setReadyForPickupDialogOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<
     "confirm-order" | "ready-soon" | "ready-for-pickup" | "complete-order" | null
   >(null);
 
   const isComplete = exchange.status === 'Completed';
   const canManageTracking =
-    userRole === 'seller' && exchange.grubhubConfirmed && !isComplete;
+    userRole === 'seller' &&
+    exchange.grubhubConfirmed &&
+    !isComplete &&
+    exchange.status !== 'ReadyForPickup';
 
   const handleTrackingUpdate = async (
     action: "ready-soon" | "ready-for-pickup",
@@ -90,6 +102,22 @@ export default function ExchangeView({
     }
   };
 
+  const handleReadyForPickupConfirm = async () => {
+    setPendingAction("ready-for-pickup");
+
+    try {
+      await onUpdateTracking(
+        exchange.id,
+        'ReadyForPickup',
+        trackingNote.trim() || 'Meal exchange is ready for pickup.',
+        etaInput ? new Date(etaInput).toISOString() : null,
+      );
+      setReadyForPickupDialogOpen(false);
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#efefef]">
       <AppNavbar
@@ -100,6 +128,48 @@ export default function ExchangeView({
         onOpenNotificationTarget={onOpenNotificationTarget}
         onProfileClick={onProfileClick}
       />
+      <Dialog
+        onOpenChange={setReadyForPickupDialogOpen}
+        open={readyForPickupDialogOpen}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Mark order ready for pickup?</DialogTitle>
+            <DialogDescription className="leading-6">
+              Confirm that you have marked the meal exchange order as ready for
+              pickup in Grubhub. After this, the buyer will be told the order is
+              ready and you will not be able to move the status back.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 text-sm leading-6 text-orange-900">
+            Use this only when the order is actually ready for pickup and the
+            next step should be buyer confirmation.
+          </div>
+          <DialogFooter>
+            <Button
+              disabled={pendingAction !== null}
+              onClick={() => setReadyForPickupDialogOpen(false)}
+              variant="outline"
+            >
+              Cancel
+            </Button>
+            <Button
+              className="bg-blue-600 hover:bg-blue-700"
+              disabled={pendingAction !== null}
+              onClick={() => void handleReadyForPickupConfirm()}
+            >
+              {pendingAction === "ready-for-pickup" ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Confirming...
+                </>
+              ) : (
+                "Confirm Ready"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <div className="max-w-2xl mx-auto p-6">
         <div className="flex items-center gap-4 mb-6">
           <Button onClick={onBack} variant="ghost" size="icon">
@@ -244,22 +314,9 @@ export default function ExchangeView({
                     <Button
                       disabled={pendingAction !== null}
                       className="bg-blue-600 hover:bg-blue-700"
-                      onClick={() =>
-                        void handleTrackingUpdate(
-                          'ready-for-pickup',
-                          'ReadyForPickup',
-                          'Meal exchange is ready for pickup.'
-                        )
-                      }
+                      onClick={() => setReadyForPickupDialogOpen(true)}
                     >
-                      {pendingAction === "ready-for-pickup" ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Updating...
-                        </>
-                      ) : (
-                        "Mark Ready"
-                      )}
+                      Mark Ready
                     </Button>
                   </div>
                 </div>
@@ -317,11 +374,20 @@ export default function ExchangeView({
             )}
 
             {userRole === 'seller' && exchange.status === 'ReadyForPickup' && (
-              <Card className="p-6">
-                <h3 className="font-bold text-lg mb-3">Waiting on Buyer</h3>
-                <p className="text-gray-700">
-                  The exchange is ready for pickup. The buyer must confirm pickup to complete the exchange.
-                </p>
+              <Card className="border-orange-200 bg-orange-50 p-6">
+                <div className="flex items-start gap-3">
+                  <Clock className="mt-0.5 h-5 w-5 text-orange-600" />
+                  <div>
+                    <h3 className="font-bold text-lg text-orange-900 mb-2">
+                      Waiting on Buyer Confirmation
+                    </h3>
+                    <p className="text-orange-900/90 leading-6">
+                      You marked this order ready for pickup. The buyer now has
+                      to confirm they received the meal before the exchange is
+                      completed.
+                    </p>
+                  </div>
+                </div>
               </Card>
             )}
           </>
