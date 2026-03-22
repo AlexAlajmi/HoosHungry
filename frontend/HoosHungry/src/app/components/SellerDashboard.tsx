@@ -3,11 +3,16 @@ import SellingModeControl from './SellingModeControl';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { ArrowLeft, DollarSign } from 'lucide-react';
-import type { OfferRecord, OrderRecord } from '../types';
+import type { NotificationItem, OfferRecord, OrderRecord } from '../types';
 
 interface SellerDashboardProps {
+  notifications: NotificationItem[];
+  onAcceptNotificationOffer: (notificationId: string, offerId: string) => void;
   onBack: () => void;
+  onDeclineNotificationOffer: (notificationId: string, offerId: string) => void;
+  onDismissNotification: (notificationId: string) => void;
   onProfileClick: () => void;
+  onOpenNotificationTarget: (notification: NotificationItem) => void;
   onSetSellingMode: (nextValue: boolean) => Promise<void>;
   availableRequests: OfferRecord[];
   isSellingModeEnabled: boolean;
@@ -19,8 +24,13 @@ interface SellerDashboardProps {
 }
 
 export default function SellerDashboard({
+  notifications,
+  onAcceptNotificationOffer,
   onBack,
+  onDeclineNotificationOffer,
+  onDismissNotification,
   onProfileClick,
+  onOpenNotificationTarget,
   onSetSellingMode,
   availableRequests,
   isSellingModeEnabled,
@@ -32,7 +42,14 @@ export default function SellerDashboard({
 }: SellerDashboardProps) {
   return (
     <div className="min-h-screen bg-[#efefef]">
-      <AppNavbar onProfileClick={onProfileClick} />
+      <AppNavbar
+        notifications={notifications}
+        onAcceptNotificationOffer={onAcceptNotificationOffer}
+        onDeclineNotificationOffer={onDeclineNotificationOffer}
+        onDismissNotification={onDismissNotification}
+        onOpenNotificationTarget={onOpenNotificationTarget}
+        onProfileClick={onProfileClick}
+      />
       <div className="max-w-4xl mx-auto p-6">
         <div className="flex items-center gap-4 mb-6">
           <Button onClick={onBack} variant="ghost" size="icon">

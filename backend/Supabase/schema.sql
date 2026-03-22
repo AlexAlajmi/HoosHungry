@@ -62,8 +62,16 @@ create table if not exists public.notifications (
     user_id text not null references public.marketplace_users(id) on delete cascade,
     title text not null,
     message text not null,
+    action_type text null,
+    action_target_id text null,
+    dismissed boolean not null default false,
     created_at timestamptz not null
 );
+
+alter table if exists public.notifications
+    add column if not exists action_type text null,
+    add column if not exists action_target_id text null,
+    add column if not exists dismissed boolean not null default false;
 
 create table if not exists public.withdrawals (
     id text primary key,

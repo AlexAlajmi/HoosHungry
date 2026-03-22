@@ -95,6 +95,9 @@ public sealed class NotificationItem
     public string UserId { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
+    public string? ActionType { get; set; }
+    public string? ActionTargetId { get; set; }
+    public bool Dismissed { get; set; }
     public DateTime CreatedAtUtc { get; set; }
 }
 
@@ -316,6 +319,15 @@ public sealed class SupabaseNotificationRow
 
     [JsonPropertyName("message")]
     public string Message { get; set; } = string.Empty;
+
+    [JsonPropertyName("action_type")]
+    public string? ActionType { get; set; }
+
+    [JsonPropertyName("action_target_id")]
+    public string? ActionTargetId { get; set; }
+
+    [JsonPropertyName("dismissed")]
+    public bool Dismissed { get; set; }
 
     [JsonPropertyName("created_at")]
     public DateTime CreatedAtUtc { get; set; }

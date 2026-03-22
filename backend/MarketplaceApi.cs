@@ -8,6 +8,7 @@ public static class MarketplaceApi
 
         api.MapAuthEndpoints();
         api.MapStateEndpoints();
+        api.MapNotificationEndpoints();
         api.MapSellerEndpoints();
         api.MapOfferEndpoints();
         api.MapOrderEndpoints();

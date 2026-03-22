@@ -61,6 +61,7 @@ public static class MarketplaceData
             new Dictionary<string, string>
             {
                 ["select"] = "*",
+                ["dismissed"] = "eq.false",
                 ["order"] = "created_at.desc",
                 ["limit"] = "18",
             },
@@ -291,9 +292,28 @@ public static class MarketplaceData
                     user_id = notification.UserId,
                     title = notification.Title,
                     message = notification.Message,
+                    action_type = notification.ActionType,
+                    action_target_id = notification.ActionTargetId,
+                    dismissed = notification.Dismissed,
                     created_at = notification.CreatedAtUtc,
                 },
             },
+            cancellationToken
+        );
+    }
+
+    public static Task PatchNotificationDismissedAsync(
+        HttpClient client,
+        SupabaseSettings settings,
+        string notificationId,
+        CancellationToken cancellationToken)
+    {
+        return PatchRowsAsync<SupabaseNotificationRow>(
+            client,
+            settings,
+            "notifications",
+            new Dictionary<string, string> { ["id"] = $"eq.{notificationId}" },
+            new { dismissed = true },
             cancellationToken
         );
     }
@@ -603,6 +623,9 @@ public static class MarketplaceData
             UserId = row.UserId,
             Title = row.Title,
             Message = row.Message,
+            ActionType = row.ActionType,
+            ActionTargetId = row.ActionTargetId,
+            Dismissed = row.Dismissed,
             CreatedAtUtc = row.CreatedAtUtc,
         };
     }

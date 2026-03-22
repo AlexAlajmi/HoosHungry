@@ -66,6 +66,8 @@ export interface NotificationItem {
   userId: string;
   title: string;
   message: string;
+  actionType?: string | null;
+  actionTargetId?: string | null;
   createdAtUtc: string;
 }
 

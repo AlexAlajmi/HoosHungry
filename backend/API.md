@@ -85,6 +85,18 @@ fetch('http://localhost:5009/api/sellers/seller-1/availability', {
 })
 ```
 
+### `POST /api/notifications/{notificationId}/dismiss`
+
+Dismisses a notification so it no longer appears in the active notification feed.
+
+Frontend example:
+
+```js
+fetch('http://localhost:5009/api/notifications/NOTE_ID/dismiss', {
+  method: 'POST',
+})
+```
+
 ### `POST /api/offers`
 
 Broadcasts a buyer's offered price to all currently available sellers.

@@ -74,6 +74,8 @@ public static class OfferEndpoints
                         UserId = offer.SellerId,
                         Title = "New meal exchange bid",
                         Message = $"{buyer.Name} offered {request.Price:C} for a meal exchange today.",
+                        ActionType = "ReviewOffer",
+                        ActionTargetId = offer.Id,
                         CreatedAtUtc = DateTime.UtcNow,
                     },
                     cancellationToken
@@ -90,6 +92,7 @@ public static class OfferEndpoints
                     Title = "Offer broadcast sent",
                     Message =
                         $"Your {request.Price:C} meal exchange offer was sent to {availableSellers.Count} available seller(s).",
+                    ActionType = "OpenBuyerDashboard",
                     CreatedAtUtc = DateTime.UtcNow,
                 },
                 cancellationToken
@@ -125,16 +128,17 @@ public static class OfferEndpoints
                 await MarketplaceData.InsertNotificationAsync(
                     client,
                     settings,
-                    new NotificationItem
-                    {
-                        Id = MarketplaceData.NewId("note"),
-                        UserId = offer.BuyerId,
-                        Title = "Seller declined your offer",
-                        Message = $"{offer.SellerName} declined the {offer.Price:C} meal exchange offer.",
-                        CreatedAtUtc = DateTime.UtcNow,
-                    },
-                    cancellationToken
-                );
+                new NotificationItem
+                {
+                    Id = MarketplaceData.NewId("note"),
+                    UserId = offer.BuyerId,
+                    Title = "Seller declined your offer",
+                    Message = $"{offer.SellerName} declined the {offer.Price:C} meal exchange offer.",
+                    ActionType = "OpenBuyerDashboard",
+                    CreatedAtUtc = DateTime.UtcNow,
+                },
+                cancellationToken
+            );
 
                 return await MarketplaceData.LoadDashboardStateAsync(client, settings, cancellationToken);
             }
@@ -206,6 +210,8 @@ public static class OfferEndpoints
                     UserId = offer.BuyerId,
                     Title = "Offer accepted",
                     Message = $"{offer.SellerName} accepted your {offer.Price:C} meal exchange request.",
+                    ActionType = "ViewOrder",
+                    ActionTargetId = order.Id,
                     CreatedAtUtc = DateTime.UtcNow,
                 },
                 cancellationToken
@@ -220,6 +226,8 @@ public static class OfferEndpoints
                     Title = "Confirm the meal exchange order",
                     Message =
                         "Use the mock Grubhub confirmation step to mark the meal exchange as placed.",
+                    ActionType = "ConfirmOrder",
+                    ActionTargetId = order.Id,
                     CreatedAtUtc = DateTime.UtcNow,
                 },
                 cancellationToken

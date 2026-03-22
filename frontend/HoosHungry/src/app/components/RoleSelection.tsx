@@ -2,16 +2,37 @@ import AppNavbar from './AppNavbar';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { ShoppingBag, Coins } from 'lucide-react';
+import type { NotificationItem } from '../types';
 
 interface RoleSelectionProps {
+  notifications: NotificationItem[];
+  onAcceptNotificationOffer: (notificationId: string, offerId: string) => void;
+  onDeclineNotificationOffer: (notificationId: string, offerId: string) => void;
+  onDismissNotification: (notificationId: string) => void;
   onProfileClick: () => void;
+  onOpenNotificationTarget: (notification: NotificationItem) => void;
   onSelectRole: (role: 'buyer' | 'seller') => void;
 }
 
-export default function RoleSelection({ onProfileClick, onSelectRole }: RoleSelectionProps) {
+export default function RoleSelection({
+  notifications,
+  onAcceptNotificationOffer,
+  onDeclineNotificationOffer,
+  onDismissNotification,
+  onProfileClick,
+  onOpenNotificationTarget,
+  onSelectRole
+}: RoleSelectionProps) {
   return (
     <div className="min-h-screen bg-[#efefef]">
-      <AppNavbar onProfileClick={onProfileClick} />
+      <AppNavbar
+        notifications={notifications}
+        onAcceptNotificationOffer={onAcceptNotificationOffer}
+        onDeclineNotificationOffer={onDeclineNotificationOffer}
+        onDismissNotification={onDismissNotification}
+        onOpenNotificationTarget={onOpenNotificationTarget}
+        onProfileClick={onProfileClick}
+      />
       <div className="flex items-center justify-center p-6">
         <div className="max-w-4xl w-full">
           <div className="text-center mb-12">

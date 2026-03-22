@@ -5,11 +5,16 @@ import { Input } from './ui/input';
 import { Card } from './ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { ArrowLeft, Plus } from 'lucide-react';
-import type { BuyerRequestSummary } from '../types';
+import type { BuyerRequestSummary, NotificationItem } from '../types';
 
 interface BuyerDashboardProps {
+  notifications: NotificationItem[];
+  onAcceptNotificationOffer: (notificationId: string, offerId: string) => void;
   onBack: () => void;
+  onDeclineNotificationOffer: (notificationId: string, offerId: string) => void;
+  onDismissNotification: (notificationId: string) => void;
   onProfileClick: () => void;
+  onOpenNotificationTarget: (notification: NotificationItem) => void;
   onCreateRequest: (request: { item: string; price: number; location: string }) => void;
   activeRequests: BuyerRequestSummary[];
   onViewExchange: (exchangeId: string) => void;
@@ -37,7 +42,18 @@ const LOCATIONS = [
   'Clemons Library'
 ];
 
-export default function BuyerDashboard({ onBack, onProfileClick, onCreateRequest, activeRequests, onViewExchange }: BuyerDashboardProps) {
+export default function BuyerDashboard({
+  notifications,
+  onAcceptNotificationOffer,
+  onBack,
+  onDeclineNotificationOffer,
+  onDismissNotification,
+  onProfileClick,
+  onOpenNotificationTarget,
+  onCreateRequest,
+  activeRequests,
+  onViewExchange
+}: BuyerDashboardProps) {
   const [showForm, setShowForm] = useState(false);
   const [selectedItem, setSelectedItem] = useState('');
   const [price, setPrice] = useState('');
@@ -59,7 +75,14 @@ export default function BuyerDashboard({ onBack, onProfileClick, onCreateRequest
 
   return (
     <div className="min-h-screen bg-[#efefef]">
-      <AppNavbar onProfileClick={onProfileClick} />
+      <AppNavbar
+        notifications={notifications}
+        onAcceptNotificationOffer={onAcceptNotificationOffer}
+        onDeclineNotificationOffer={onDeclineNotificationOffer}
+        onDismissNotification={onDismissNotification}
+        onOpenNotificationTarget={onOpenNotificationTarget}
+        onProfileClick={onProfileClick}
+      />
       <div className="max-w-4xl mx-auto p-6">
         <div className="flex items-center gap-4 mb-6">
           <Button onClick={onBack} variant="ghost" size="icon">

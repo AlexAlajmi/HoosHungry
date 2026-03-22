@@ -5,11 +5,16 @@ import { Card } from './ui/card';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { ArrowLeft, MapPin, Clock, CheckCircle2, User } from 'lucide-react';
-import type { OrderRecord, OrderStatus } from '../types';
+import type { NotificationItem, OrderRecord, OrderStatus } from '../types';
 
 interface ExchangeViewProps {
+  notifications: NotificationItem[];
+  onAcceptNotificationOffer: (notificationId: string, offerId: string) => void;
   onBack: () => void;
+  onDeclineNotificationOffer: (notificationId: string, offerId: string) => void;
+  onDismissNotification: (notificationId: string) => void;
   onProfileClick: () => void;
+  onOpenNotificationTarget: (notification: NotificationItem) => void;
   exchange: OrderRecord;
   userRole: 'buyer' | 'seller';
   onConfirmOrder: (orderId: string) => Promise<void>;
@@ -22,8 +27,13 @@ interface ExchangeViewProps {
 }
 
 export default function ExchangeView({
+  notifications,
+  onAcceptNotificationOffer,
   onBack,
+  onDeclineNotificationOffer,
+  onDismissNotification,
   onProfileClick,
+  onOpenNotificationTarget,
   exchange,
   userRole,
   onConfirmOrder,
@@ -47,7 +57,14 @@ export default function ExchangeView({
 
   return (
     <div className="min-h-screen bg-[#efefef]">
-      <AppNavbar onProfileClick={onProfileClick} />
+      <AppNavbar
+        notifications={notifications}
+        onAcceptNotificationOffer={onAcceptNotificationOffer}
+        onDeclineNotificationOffer={onDeclineNotificationOffer}
+        onDismissNotification={onDismissNotification}
+        onOpenNotificationTarget={onOpenNotificationTarget}
+        onProfileClick={onProfileClick}
+      />
       <div className="max-w-2xl mx-auto p-6">
         <div className="flex items-center gap-4 mb-6">
           <Button onClick={onBack} variant="ghost" size="icon">

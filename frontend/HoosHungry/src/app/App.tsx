@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import {
   confirmOrder,
   createOffer,
+  dismissNotification,
   decideOffer,
   loadDashboardState,
   setSellingAvailability,
@@ -21,6 +22,7 @@ import { Toaster } from "./components/ui/sonner";
 import type {
   BuyerRequestSummary,
   MarketplaceDashboardState,
+  NotificationItem,
   OrderRecord,
   OrderStatus,
   UserAccount,
@@ -472,6 +474,19 @@ export default function App() {
     toast.success("Signed out.");
   };
 
+  const openOrderScreen = (orderId: string, state?: MarketplaceDashboardState) => {
+    const sourceState = state ?? dashboardState;
+    const order = sourceState?.orders.find((item) => item.id === orderId);
+
+    if (!order || !currentUser) {
+      return;
+    }
+
+    setSelectedExchangeId(order.id);
+    setUserRole(order.sellerId === currentUser.id ? "seller" : "buyer");
+    setScreen("exchange");
+  };
+
   const handleCreateRequest = (request: {
     item: string;
     price: number;
@@ -515,6 +530,36 @@ export default function App() {
       });
   };
 
+  const handleAcceptNotificationOffer = (
+    notificationId: string,
+    offerId: string,
+  ) => {
+    void decideOffer(offerId, true)
+      .then((nextState) => dismissNotification(notificationId))
+      .then((nextState) => {
+        applyDashboardState(nextState);
+        const order = nextState.orders.find(
+          (item) => item.offerId === offerId,
+        );
+
+        if (order) {
+          openOrderScreen(order.id, nextState);
+        } else {
+          setUserRole("seller");
+          setScreen("seller");
+        }
+
+        toast.success("Request accepted.");
+      })
+      .catch((error) => {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Unable to accept request.",
+        );
+      });
+  };
+
   const handleDeclineRequest = (offerId: string) => {
     void decideOffer(offerId, false)
       .then((nextState) => {
@@ -526,6 +571,41 @@ export default function App() {
           error instanceof Error
             ? error.message
             : "Unable to decline request.",
+        );
+      });
+  };
+
+  const handleDeclineNotificationOffer = (
+    notificationId: string,
+    offerId: string,
+  ) => {
+    void decideOffer(offerId, false)
+      .then(() => dismissNotification(notificationId))
+      .then((nextState) => {
+        applyDashboardState(nextState);
+        setUserRole("seller");
+        setScreen("seller");
+        toast.success("Request declined.");
+      })
+      .catch((error) => {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Unable to decline request.",
+        );
+      });
+  };
+
+  const handleDismissNotification = (notificationId: string) => {
+    void dismissNotification(notificationId)
+      .then((nextState) => {
+        applyDashboardState(nextState);
+      })
+      .catch((error) => {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Unable to dismiss notification.",
         );
       });
   };
@@ -605,6 +685,28 @@ export default function App() {
           : "Unable to withdraw funds.";
       toast.error(message);
       throw error;
+    }
+  };
+
+  const handleOpenNotificationTarget = (notification: NotificationItem) => {
+    switch (notification.actionType) {
+      case "ConfirmOrder":
+      case "ViewOrder":
+        if (notification.actionTargetId) {
+          openOrderScreen(notification.actionTargetId);
+        }
+        return;
+      case "OpenSellerDashboard":
+      case "ReviewOffer":
+        setUserRole("seller");
+        setScreen("seller");
+        return;
+      case "OpenBuyerDashboard":
+        setUserRole("buyer");
+        setScreen("buyer");
+        return;
+      default:
+        return;
     }
   };
 
@@ -722,8 +824,14 @@ export default function App() {
           effectiveUser && (
             <ProfilePage
               notifications={notifications}
+              onAcceptNotificationOffer={handleAcceptNotificationOffer}
               onBack={closeProfile}
+              onDeclineNotificationOffer={
+                handleDeclineNotificationOffer
+              }
+              onDismissNotification={handleDismissNotification}
               onProfileClick={openProfile}
+              onOpenNotificationTarget={handleOpenNotificationTarget}
               onSignOut={handleSignOut}
               onSetSellingMode={handleSetSellingMode}
               onWithdraw={handleWithdraw}
@@ -734,7 +842,14 @@ export default function App() {
 
         {!showLoadingState && screen === "role-selection" && (
           <RoleSelection
+            notifications={notifications}
+            onAcceptNotificationOffer={handleAcceptNotificationOffer}
+            onDeclineNotificationOffer={
+              handleDeclineNotificationOffer
+            }
+            onDismissNotification={handleDismissNotification}
             onProfileClick={openProfile}
+            onOpenNotificationTarget={handleOpenNotificationTarget}
             onSelectRole={handleSelectRole}
           />
         )}
@@ -742,9 +857,16 @@ export default function App() {
         {!showLoadingState && screen === "buyer" && (
           <BuyerDashboard
             activeRequests={buyerRequests}
+            notifications={notifications}
+            onAcceptNotificationOffer={handleAcceptNotificationOffer}
             onBack={handleBackToRoleSelection}
             onCreateRequest={handleCreateRequest}
+            onDeclineNotificationOffer={
+              handleDeclineNotificationOffer
+            }
+            onDismissNotification={handleDismissNotification}
             onProfileClick={openProfile}
+            onOpenNotificationTarget={handleOpenNotificationTarget}
             onViewExchange={handleViewExchange}
           />
         )}
@@ -758,9 +880,16 @@ export default function App() {
             }
             myAcceptedRequests={myAcceptedRequests}
             onAcceptRequest={handleAcceptRequest}
+            notifications={notifications}
+            onAcceptNotificationOffer={handleAcceptNotificationOffer}
             onBack={handleBackToRoleSelection}
             onDeclineRequest={handleDeclineRequest}
+            onDeclineNotificationOffer={
+              handleDeclineNotificationOffer
+            }
+            onDismissNotification={handleDismissNotification}
             onProfileClick={openProfile}
+            onOpenNotificationTarget={handleOpenNotificationTarget}
             onSetSellingMode={handleSetSellingMode}
             onViewExchange={handleViewExchange}
           />
@@ -772,9 +901,16 @@ export default function App() {
           userRole && (
             <ExchangeView
               exchange={selectedExchange}
+              notifications={notifications}
+              onAcceptNotificationOffer={handleAcceptNotificationOffer}
               onBack={handleBackFromExchange}
               onConfirmOrder={handleConfirmOrder}
+              onDeclineNotificationOffer={
+                handleDeclineNotificationOffer
+              }
+              onDismissNotification={handleDismissNotification}
               onProfileClick={openProfile}
+              onOpenNotificationTarget={handleOpenNotificationTarget}
               onUpdateTracking={handleUpdateTracking}
               userRole={userRole}
             />

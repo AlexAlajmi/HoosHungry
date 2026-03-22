@@ -64,6 +64,8 @@ public static class OrderEndpoints
                         Title = "Order confirmed",
                         Message =
                             $"{order.SellerName} confirmed the meal exchange order. ETA is about 12 minutes.",
+                        ActionType = "ViewOrder",
+                        ActionTargetId = order.Id,
                         CreatedAtUtc = DateTime.UtcNow,
                     },
                     cancellationToken
@@ -142,6 +144,8 @@ public static class OrderEndpoints
                     UserId = order.BuyerId,
                     Title = "Meal tracking update",
                     Message = buyerMessage,
+                    ActionType = "ViewOrder",
+                    ActionTargetId = order.Id,
                     CreatedAtUtc = DateTime.UtcNow,
                 },
                 cancellationToken
@@ -155,6 +159,8 @@ public static class OrderEndpoints
                     UserId = order.SellerId,
                     Title = "Tracking update sent",
                     Message = $"Buyer was notified: {buyerMessage}",
+                    ActionType = "ViewOrder",
+                    ActionTargetId = order.Id,
                     CreatedAtUtc = DateTime.UtcNow,
                 },
                 cancellationToken

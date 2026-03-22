@@ -20,8 +20,12 @@ export default function LandingPage({
         data-name="Landing Page"
       >
       <div className="absolute h-[79px] left-[67px] top-px w-[90px]" data-name="Screenshot 2026-03-21 at 4.55.24 PM 1">
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <img alt="" className="absolute h-[135.8%] left-[-38.81%] max-w-none top-[-13.66%] w-[180.6%]" src={imgScreenshot20260321At45524Pm1} />
+        <div className="absolute inset-0 pointer-events-none">
+          <img
+            alt=""
+            className="h-full w-full object-contain"
+            src={imgScreenshot20260321At45524Pm1}
+          />
         </div>
       </div>
       <p className="absolute font-['Inter:Bold',sans-serif] font-bold leading-none left-[356px] not-italic text-[32px] text-black top-[238px] whitespace-nowrap">Buy meals. Sell swipes. Save Money.</p>

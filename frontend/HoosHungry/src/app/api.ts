@@ -44,6 +44,14 @@ export function setSellingAvailability(
   );
 }
 
+export function dismissNotification(notificationId: string) {
+  return fetch(`${API_BASE}/notifications/${notificationId}/dismiss`, {
+    method: "POST",
+  }).then((response) =>
+    parseResponse<MarketplaceDashboardState>(response),
+  );
+}
+
 export function createOffer(request: {
   buyerId: string;
   item: string;

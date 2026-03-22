@@ -10,8 +10,12 @@ import { Card } from "./ui/card";
 import { Input } from "./ui/input";
 
 interface ProfilePageProps {
+  onAcceptNotificationOffer: (notificationId: string, offerId: string) => void;
   onBack: () => void;
+  onDeclineNotificationOffer: (notificationId: string, offerId: string) => void;
+  onDismissNotification: (notificationId: string) => void;
   onProfileClick: () => void;
+  onOpenNotificationTarget: (notification: NotificationItem) => void;
   onSignOut: () => void;
   onSetSellingMode: (nextValue: boolean) => Promise<void>;
   onWithdraw: (amount: number) => Promise<void>;
@@ -21,8 +25,12 @@ interface ProfilePageProps {
 }
 
 export default function ProfilePage({
+  onAcceptNotificationOffer,
   onBack,
+  onDeclineNotificationOffer,
+  onDismissNotification,
   onProfileClick,
+  onOpenNotificationTarget,
   onSignOut,
   onSetSellingMode,
   onWithdraw,
@@ -43,7 +51,14 @@ export default function ProfilePage({
 
   return (
     <div className="min-h-screen bg-[#efefef]">
-      <AppNavbar onProfileClick={onProfileClick} />
+      <AppNavbar
+        notifications={notifications}
+        onAcceptNotificationOffer={onAcceptNotificationOffer}
+        onDeclineNotificationOffer={onDeclineNotificationOffer}
+        onDismissNotification={onDismissNotification}
+        onOpenNotificationTarget={onOpenNotificationTarget}
+        onProfileClick={onProfileClick}
+      />
       <div className="mx-auto max-w-4xl p-6">
         <div className="mb-6 flex items-center gap-4">
           <Button onClick={onBack} size="icon" variant="ghost">
@@ -91,7 +106,7 @@ export default function ProfilePage({
         </div>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-          <Card className="p-6">
+          <Card className="self-start p-6">
             <h2 className="text-xl font-bold">Wallet</h2>
             <p className="mt-2 text-sm text-gray-600">
               Withdraw from your seller balance once meal exchange orders are completed.
@@ -137,7 +152,7 @@ export default function ProfilePage({
 
           <Card className="p-6">
             <h2 className="text-xl font-bold">Recent Notifications</h2>
-            <div className="mt-5 space-y-3">
+            <div className="mt-5 max-h-[22rem] space-y-3 overflow-y-auto pr-1">
               {notifications.length === 0 ? (
                 <p className="text-sm text-gray-500">No notifications yet.</p>
               ) : (
