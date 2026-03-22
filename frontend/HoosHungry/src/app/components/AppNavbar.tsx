@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Bell, User, X } from "lucide-react";
 
 import type { NotificationItem } from "../types";
@@ -9,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { ScrollArea } from "./ui/scroll-area";
+import { cn } from "./ui/utils";
 
 interface AppNavbarProps {
   notifications?: NotificationItem[];
@@ -20,7 +22,7 @@ interface AppNavbarProps {
     notificationId: string,
     offerId: string,
   ) => void;
-  onDismissNotification?: (notificationId: string) => void;
+  onDismissNotification?: (notificationId: string) => Promise<void>;
   onOpenNotificationTarget?: (notification: NotificationItem) => void;
   onProfileClick?: () => void;
   profileLabel?: string;
@@ -50,6 +52,34 @@ export default function AppNavbar({
   onProfileClick,
   profileLabel = "Profile",
 }: AppNavbarProps) {
+  const [dismissingIds, setDismissingIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    setDismissingIds((current) =>
+      current.filter((id) =>
+        notifications.some((notification) => notification.id === id),
+      ),
+    );
+  }, [notifications]);
+
+  const handleDismiss = async (notificationId: string) => {
+    if (!onDismissNotification || dismissingIds.includes(notificationId)) {
+      return;
+    }
+
+    setDismissingIds((current) => [...current, notificationId]);
+
+    await new Promise((resolve) => window.setTimeout(resolve, 180));
+
+    try {
+      await onDismissNotification(notificationId);
+    } catch {
+      setDismissingIds((current) =>
+        current.filter((id) => id !== notificationId),
+      );
+    }
+  };
+
   return (
     <header className="w-full bg-white shadow-sm">
       <div className="mx-auto flex h-20 max-w-6xl items-center justify-between px-6">
@@ -100,85 +130,91 @@ export default function AppNavbar({
                 </div>
               ) : (
                 <ScrollArea className="max-h-[24rem]">
-                  <div className="space-y-3 p-3">
+                  <div className="p-3">
                     {notifications.map((notification) => (
                       <div
                         key={notification.id}
-                        className="rounded-lg border bg-white p-3"
+                        className={cn(
+                          "origin-top overflow-hidden transition-all duration-200 ease-out",
+                          dismissingIds.includes(notification.id)
+                            ? "mb-0 max-h-0 translate-y-[-6px] scale-[0.98] opacity-0"
+                            : "mb-3 max-h-[18rem] translate-y-0 scale-100 opacity-100 last:mb-0",
+                        )}
                       >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0 flex-1">
-                            <p className="font-semibold">
-                              {notification.title}
-                            </p>
-                            <p className="mt-1 text-sm text-gray-600">
-                              {notification.message}
-                            </p>
-                            <p className="mt-2 text-xs text-gray-500">
-                              {new Date(
-                                notification.createdAtUtc,
-                              ).toLocaleString()}
-                            </p>
+                        <div className="rounded-lg border bg-white p-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <p className="font-semibold">
+                                {notification.title}
+                              </p>
+                              <p className="mt-1 text-sm text-gray-600">
+                                {notification.message}
+                              </p>
+                              <p className="mt-2 text-xs text-gray-500">
+                                {new Date(
+                                  notification.createdAtUtc,
+                                ).toLocaleString()}
+                              </p>
+                            </div>
+                            <Button
+                              className="h-8 w-8 shrink-0"
+                              disabled={dismissingIds.includes(notification.id)}
+                              onClick={() => void handleDismiss(notification.id)}
+                              size="icon"
+                              type="button"
+                              variant="ghost"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
                           </div>
-                          <Button
-                            className="h-8 w-8 shrink-0"
-                            onClick={() =>
-                              onDismissNotification?.(notification.id)
-                            }
-                            size="icon"
-                            type="button"
-                            variant="ghost"
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
 
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {notification.actionType === "ReviewOffer" &&
-                            notification.actionTargetId && (
-                              <>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {notification.actionType === "ReviewOffer" &&
+                              notification.actionTargetId && (
+                                <>
+                                  <Button
+                                    className="bg-[#fd6500] text-white hover:bg-[#e55a00]"
+                                    onClick={() =>
+                                      onAcceptNotificationOffer?.(
+                                        notification.id,
+                                        notification.actionTargetId!,
+                                      )
+                                    }
+                                    size="sm"
+                                    type="button"
+                                  >
+                                    Accept
+                                  </Button>
+                                  <Button
+                                    onClick={() =>
+                                      onDeclineNotificationOffer?.(
+                                        notification.id,
+                                        notification.actionTargetId!,
+                                      )
+                                    }
+                                    size="sm"
+                                    type="button"
+                                    variant="outline"
+                                  >
+                                    Decline
+                                  </Button>
+                                </>
+                              )}
+
+                            {notification.actionType !== "ReviewOffer" &&
+                              notification.actionTargetId && (
                                 <Button
                                   className="bg-[#fd6500] text-white hover:bg-[#e55a00]"
                                   onClick={() =>
-                                    onAcceptNotificationOffer?.(
-                                      notification.id,
-                                      notification.actionTargetId!,
-                                    )
+                                    onOpenNotificationTarget?.(notification)
                                   }
                                   size="sm"
                                   type="button"
                                 >
-                                  Accept
+                                  {getNotificationActionLabel(notification)}
                                 </Button>
-                                <Button
-                                  onClick={() =>
-                                    onDeclineNotificationOffer?.(
-                                      notification.id,
-                                      notification.actionTargetId!,
-                                    )
-                                  }
-                                  size="sm"
-                                  type="button"
-                                  variant="outline"
-                                >
-                                  Decline
-                                </Button>
-                              </>
-                            )}
-
-                          {notification.actionType !== "ReviewOffer" &&
-                            notification.actionTargetId && (
-                              <Button
-                                className="bg-[#fd6500] text-white hover:bg-[#e55a00]"
-                                onClick={() =>
-                                  onOpenNotificationTarget?.(notification)
-                                }
-                                size="sm"
-                                type="button"
-                              >
-                                {getNotificationActionLabel(notification)}
-                              </Button>
-                            )}
+                              )}
+                          </div>
                         </div>
                       </div>
                     ))}

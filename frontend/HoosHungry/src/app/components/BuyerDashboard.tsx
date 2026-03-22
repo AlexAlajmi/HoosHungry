@@ -12,7 +12,7 @@ interface BuyerDashboardProps {
   onAcceptNotificationOffer: (notificationId: string, offerId: string) => void;
   onBack: () => void;
   onDeclineNotificationOffer: (notificationId: string, offerId: string) => void;
-  onDismissNotification: (notificationId: string) => void;
+  onDismissNotification: (notificationId: string) => Promise<void>;
   onProfileClick: () => void;
   onOpenNotificationTarget: (notification: NotificationItem) => void;
   onCreateRequest: (request: { item: string; price: number; location: string }) => void;

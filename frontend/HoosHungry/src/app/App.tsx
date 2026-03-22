@@ -596,18 +596,19 @@ export default function App() {
       });
   };
 
-  const handleDismissNotification = (notificationId: string) => {
-    void dismissNotification(notificationId)
-      .then((nextState) => {
-        applyDashboardState(nextState);
-      })
-      .catch((error) => {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : "Unable to dismiss notification.",
-        );
-      });
+  const handleDismissNotification = async (notificationId: string) => {
+    try {
+      const nextState = await dismissNotification(notificationId);
+      applyDashboardState(nextState);
+      toast.success("Notification dismissed.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to dismiss notification.",
+      );
+      throw error;
+    }
   };
 
   const handleViewExchange = (exchangeId: string) => {

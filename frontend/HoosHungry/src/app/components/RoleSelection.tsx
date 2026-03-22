@@ -8,7 +8,7 @@ interface RoleSelectionProps {
   notifications: NotificationItem[];
   onAcceptNotificationOffer: (notificationId: string, offerId: string) => void;
   onDeclineNotificationOffer: (notificationId: string, offerId: string) => void;
-  onDismissNotification: (notificationId: string) => void;
+  onDismissNotification: (notificationId: string) => Promise<void>;
   onProfileClick: () => void;
   onOpenNotificationTarget: (notification: NotificationItem) => void;
   onSelectRole: (role: 'buyer' | 'seller') => void;

@@ -10,7 +10,7 @@ interface SellerDashboardProps {
   onAcceptNotificationOffer: (notificationId: string, offerId: string) => void;
   onBack: () => void;
   onDeclineNotificationOffer: (notificationId: string, offerId: string) => void;
-  onDismissNotification: (notificationId: string) => void;
+  onDismissNotification: (notificationId: string) => Promise<void>;
   onProfileClick: () => void;
   onOpenNotificationTarget: (notification: NotificationItem) => void;
   onSetSellingMode: (nextValue: boolean) => Promise<void>;
