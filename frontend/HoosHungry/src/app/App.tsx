@@ -35,6 +35,123 @@ type Screen =
   | "seller"
   | "exchange";
 
+type ActiveRole = "buyer" | "seller";
+
+interface PersistedNavigationState {
+  previousScreen: Screen;
+  screen: Screen;
+  selectedExchangeId: string | null;
+  userRole: ActiveRole | null;
+}
+
+const SESSION_STORAGE_KEY = "hooshungry.session";
+const NAVIGATION_STORAGE_KEY = "hooshungry.navigation";
+
+function isBrowser() {
+  return typeof window !== "undefined";
+}
+
+function isAuthUser(value: unknown): value is AuthUser {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record.id === "string" &&
+    typeof record.email === "string" &&
+    typeof record.name === "string" &&
+    (record.role === "Buyer" || record.role === "Seller") &&
+    typeof record.mealExchangeAvailable === "boolean" &&
+    typeof record.walletBalance === "number" &&
+    typeof record.headline === "string"
+  );
+}
+
+function getDefaultNavigationState(
+  hasUser: boolean,
+): PersistedNavigationState {
+  return {
+    previousScreen: "role-selection",
+    screen: hasUser ? "role-selection" : "home",
+    selectedExchangeId: null,
+    userRole: null,
+  };
+}
+
+function loadStoredUser(): AuthUser | null {
+  if (!isBrowser()) {
+    return null;
+  }
+
+  try {
+    const rawValue = window.localStorage.getItem(SESSION_STORAGE_KEY);
+    if (!rawValue) {
+      return null;
+    }
+
+    const parsed = JSON.parse(rawValue) as unknown;
+    return isAuthUser(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function loadStoredNavigationState(
+  hasUser: boolean,
+): PersistedNavigationState {
+  const fallback = getDefaultNavigationState(hasUser);
+  if (!isBrowser() || !hasUser) {
+    return fallback;
+  }
+
+  try {
+    const rawValue = window.localStorage.getItem(
+      NAVIGATION_STORAGE_KEY,
+    );
+    if (!rawValue) {
+      return fallback;
+    }
+
+    const parsed = JSON.parse(rawValue) as Partial<PersistedNavigationState>;
+    const screen =
+      parsed.screen === "profile" ||
+      parsed.screen === "role-selection" ||
+      parsed.screen === "buyer" ||
+      parsed.screen === "seller" ||
+      parsed.screen === "exchange"
+        ? parsed.screen
+        : fallback.screen;
+    const previousScreen =
+      parsed.previousScreen === "profile" ||
+      parsed.previousScreen === "role-selection" ||
+      parsed.previousScreen === "buyer" ||
+      parsed.previousScreen === "seller" ||
+      parsed.previousScreen === "exchange" ||
+      parsed.previousScreen === "home" ||
+      parsed.previousScreen === "auth"
+        ? parsed.previousScreen
+        : fallback.previousScreen;
+    const userRole =
+      parsed.userRole === "buyer" || parsed.userRole === "seller"
+        ? parsed.userRole
+        : null;
+    const selectedExchangeId =
+      typeof parsed.selectedExchangeId === "string"
+        ? parsed.selectedExchangeId
+        : null;
+
+    return {
+      previousScreen,
+      screen,
+      selectedExchangeId,
+      userRole,
+    };
+  } catch {
+    return fallback;
+  }
+}
+
 function findUserInState(
   state: MarketplaceDashboardState,
   userId: string,
@@ -166,21 +283,28 @@ function sortNewest<T extends { createdAtUtc: string }>(items: T[]): T[] {
 }
 
 export default function App() {
-  const [screen, setScreen] = useState<Screen>("home");
-  const [previousScreen, setPreviousScreen] =
-    useState<Screen>("role-selection");
-  const [userRole, setUserRole] = useState<"buyer" | "seller" | null>(
-    null,
-  );
+  const storedUser = loadStoredUser();
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(
-    null,
+    () => storedUser,
+  );
+  const [initialNavigation] = useState<PersistedNavigationState>(() =>
+    loadStoredNavigationState(!!storedUser),
+  );
+  const [screen, setScreen] = useState<Screen>(
+    initialNavigation.screen,
+  );
+  const [previousScreen, setPreviousScreen] = useState<Screen>(
+    initialNavigation.previousScreen,
+  );
+  const [userRole, setUserRole] = useState<ActiveRole | null>(
+    initialNavigation.userRole,
   );
   const [dashboardState, setDashboardState] =
     useState<MarketplaceDashboardState | null>(null);
   const [isStateLoading, setIsStateLoading] = useState(false);
   const [selectedExchangeId, setSelectedExchangeId] = useState<
     string | null
-  >(null);
+  >(initialNavigation.selectedExchangeId);
 
   const applyDashboardState = (state: MarketplaceDashboardState) => {
     setDashboardState(state);
@@ -192,6 +316,45 @@ export default function App() {
       return findUserInState(state, previousUser.id) ?? previousUser;
     });
   };
+
+  useEffect(() => {
+    if (!isBrowser()) {
+      return;
+    }
+
+    if (!currentUser) {
+      window.localStorage.removeItem(SESSION_STORAGE_KEY);
+      window.localStorage.removeItem(NAVIGATION_STORAGE_KEY);
+      return;
+    }
+
+    window.localStorage.setItem(
+      SESSION_STORAGE_KEY,
+      JSON.stringify(currentUser),
+    );
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (!isBrowser() || !currentUser) {
+      return;
+    }
+
+    window.localStorage.setItem(
+      NAVIGATION_STORAGE_KEY,
+      JSON.stringify({
+        previousScreen,
+        screen,
+        selectedExchangeId,
+        userRole,
+      } satisfies PersistedNavigationState),
+    );
+  }, [
+    currentUser,
+    previousScreen,
+    screen,
+    selectedExchangeId,
+    userRole,
+  ]);
 
   useEffect(() => {
     if (!currentUser) {
@@ -232,6 +395,12 @@ export default function App() {
       isActive = false;
     };
   }, [currentUser?.id]);
+
+  useEffect(() => {
+    if (!currentUser && screen !== "home" && screen !== "auth") {
+      setScreen("home");
+    }
+  }, [currentUser, screen]);
 
   const handleGetStarted = () => {
     setScreen("auth");
@@ -291,6 +460,16 @@ export default function App() {
   const handleSelectRole = (role: "buyer" | "seller") => {
     setUserRole(role);
     setScreen(role);
+  };
+
+  const handleSignOut = () => {
+    setCurrentUser(null);
+    setDashboardState(null);
+    setUserRole(null);
+    setSelectedExchangeId(null);
+    setPreviousScreen("role-selection");
+    setScreen("home");
+    toast.success("Signed out.");
   };
 
   const handleCreateRequest = (request: {
@@ -487,6 +666,24 @@ export default function App() {
       (order) => order.id === selectedExchangeId,
     ) ?? null;
 
+  useEffect(() => {
+    if (
+      screen === "exchange" &&
+      (!selectedExchangeId ||
+        !userRole ||
+        (dashboardState && !selectedExchange))
+    ) {
+      setSelectedExchangeId(null);
+      setScreen(userRole ?? "role-selection");
+    }
+  }, [
+    dashboardState,
+    screen,
+    selectedExchange,
+    selectedExchangeId,
+    userRole,
+  ]);
+
   const showLoadingState =
     !!currentUser &&
     isStateLoading &&
@@ -527,6 +724,7 @@ export default function App() {
               notifications={notifications}
               onBack={closeProfile}
               onProfileClick={openProfile}
+              onSignOut={handleSignOut}
               onSetSellingMode={handleSetSellingMode}
               onWithdraw={handleWithdraw}
               user={effectiveUser}

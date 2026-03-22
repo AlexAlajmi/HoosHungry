@@ -12,6 +12,7 @@ import { Input } from "./ui/input";
 interface ProfilePageProps {
   onBack: () => void;
   onProfileClick: () => void;
+  onSignOut: () => void;
   onSetSellingMode: (nextValue: boolean) => Promise<void>;
   onWithdraw: (amount: number) => Promise<void>;
   notifications: NotificationItem[];
@@ -22,6 +23,7 @@ interface ProfilePageProps {
 export default function ProfilePage({
   onBack,
   onProfileClick,
+  onSignOut,
   onSetSellingMode,
   onWithdraw,
   notifications,
@@ -72,6 +74,13 @@ export default function ProfilePage({
                   {user.headline || "No headline added yet."}
                 </p>
               </div>
+              <Button
+                className="mt-2 w-full"
+                onClick={onSignOut}
+                variant="outline"
+              >
+                Sign Out
+              </Button>
             </div>
           </Card>
 
