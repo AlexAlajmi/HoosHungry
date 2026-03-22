@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import HomePage from "./components/HomePage";
-import RoleSelection from "./components/RoleSelection";
+import AuthScreen, { type AuthUser } from "./components/AuthScreen";
 import BuyerDashboard from "./components/BuyerDashboard";
 import SellerDashboard from "./components/SellerDashboard";
 import ExchangeView from "./components/ExchangeView";
@@ -9,7 +9,7 @@ import { Toaster } from "./components/ui/sonner";
 
 type Screen =
   | "home"
-  | "role-selection"
+  | "auth"
   | "buyer"
   | "seller"
   | "exchange";
@@ -89,6 +89,9 @@ export default function App() {
   const [userRole, setUserRole] = useState<
     "buyer" | "seller" | null
   >(null);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(
+    null,
+  );
   const [requests, setRequests] = useState<Request[]>(
     generateMockRequests(),
   );
@@ -101,15 +104,30 @@ export default function App() {
   >(null);
   const [sellerBalance, setSellerBalance] = useState(0);
 
-  const currentUserName = userRole === "buyer" ? "You" : "You";
+  const currentUserName = currentUser?.name ?? "You";
 
-  const handleGetStarted = () => {
-    setScreen("role-selection");
+  const resetMarketplaceState = () => {
+    setRequests(generateMockRequests());
+    setMyRequests([]);
+    setMyAcceptedRequests([]);
+    setSelectedExchangeId(null);
   };
 
-  const handleSelectRole = (role: "buyer" | "seller") => {
+  const handleGetStarted = () => {
+    setScreen("auth");
+  };
+
+  const handleAuthenticated = (user: AuthUser) => {
+    const role = user.role === "Seller" ? "seller" : "buyer";
+
+    setCurrentUser(user);
     setUserRole(role);
+    setSellerBalance(user.walletBalance ?? 0);
+    resetMarketplaceState();
     setScreen(role);
+    toast.success(
+      `Signed in as ${user.name}.`,
+    );
   };
 
   const handleCreateRequest = (requestData: {
@@ -161,7 +179,7 @@ export default function App() {
     const acceptedRequest: Request = {
       ...request,
       status: "matched",
-      sellerId: "current-user",
+      sellerId: currentUser?.id ?? "current-user",
       sellerName: currentUserName,
     };
 
@@ -253,8 +271,12 @@ export default function App() {
     setScreen(userRole!);
   };
 
-  const handleBackToDashboard = () => {
-    setScreen("role-selection");
+  const handleLogout = () => {
+    setCurrentUser(null);
+    setUserRole(null);
+    setSellerBalance(0);
+    resetMarketplaceState();
+    setScreen("auth");
   };
 
   const getSelectedExchange = (): Request | null => {
@@ -274,13 +296,16 @@ export default function App() {
           <HomePage onGetStarted={handleGetStarted} />
         )}
 
-        {screen === "role-selection" && (
-          <RoleSelection onSelectRole={handleSelectRole} />
+        {screen === "auth" && (
+          <AuthScreen
+            onAuthenticated={handleAuthenticated}
+            onBack={() => setScreen("home")}
+          />
         )}
 
         {screen === "buyer" && (
           <BuyerDashboard
-            onBack={handleBackToDashboard}
+            onBack={handleLogout}
             onCreateRequest={handleCreateRequest}
             activeRequests={myRequests}
             onViewExchange={handleViewExchange}
@@ -289,7 +314,7 @@ export default function App() {
 
         {screen === "seller" && (
           <SellerDashboard
-            onBack={handleBackToDashboard}
+            onBack={handleLogout}
             availableRequests={requests.filter(
               (r) => r.status === "pending",
             )}
