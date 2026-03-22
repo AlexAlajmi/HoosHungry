@@ -21,6 +21,14 @@ public static class OfferEndpoints
             {
                 throw new InvalidOperationException("Offer price must be greater than zero.");
             }
+            if (string.IsNullOrWhiteSpace(request.Item))
+            {
+                throw new InvalidOperationException("Menu item is required.");
+            }
+            if (string.IsNullOrWhiteSpace(request.Location))
+            {
+                throw new InvalidOperationException("Pickup location is required.");
+            }
 
             var client = httpClientFactory.CreateClient();
             var state = await MarketplaceData.LoadDashboardStateAsync(client, settings, cancellationToken);
@@ -46,6 +54,8 @@ public static class OfferEndpoints
                 BuyerName = buyer.Name,
                 SellerId = seller.Id,
                 SellerName = seller.Name,
+                Item = request.Item.Trim(),
+                Location = request.Location.Trim(),
                 Price = request.Price,
                 Status = OfferStatus.Pending,
                 CreatedAtUtc = createdAtUtc,
@@ -161,6 +171,8 @@ public static class OfferEndpoints
                 BuyerName = offer.BuyerName,
                 SellerId = offer.SellerId,
                 SellerName = offer.SellerName,
+                Item = offer.Item,
+                Location = offer.Location,
                 OfferedPrice = offer.Price,
                 GrubhubConfirmed = false,
                 FundsReleasedToSeller = false,

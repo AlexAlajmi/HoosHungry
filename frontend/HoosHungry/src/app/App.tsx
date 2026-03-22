@@ -1,15 +1,30 @@
-import { useState } from "react";
-import HomePage from "./components/HomePage";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+
+import {
+  confirmOrder,
+  createOffer,
+  decideOffer,
+  loadDashboardState,
+  setSellingAvailability,
+  updateOrderTracking,
+  withdrawFunds,
+} from "./api";
 import AuthScreen, { type AuthUser } from "./components/AuthScreen";
+import BuyerDashboard from "./components/BuyerDashboard";
+import ExchangeView from "./components/ExchangeView";
+import HomePage from "./components/HomePage";
 import ProfilePage from "./components/ProfilePage";
 import RoleSelection from "./components/RoleSelection";
-import BuyerDashboard from "./components/BuyerDashboard";
 import SellerDashboard from "./components/SellerDashboard";
-import ExchangeView from "./components/ExchangeView";
-import { toast } from "sonner";
 import { Toaster } from "./components/ui/sonner";
-
-const API_BASE = "http://localhost:5009/api";
+import type {
+  BuyerRequestSummary,
+  MarketplaceDashboardState,
+  OrderRecord,
+  OrderStatus,
+  UserAccount,
+} from "./types";
 
 type Screen =
   | "home"
@@ -20,105 +35,203 @@ type Screen =
   | "seller"
   | "exchange";
 
-interface Request {
-  id: string;
-  item: string;
-  price: number;
-  location: string;
-  buyerName: string;
-  sellerId?: string;
-  sellerName?: string;
-  status:
-    | "pending"
-    | "matched"
-    | "meeting scheduled"
-    | "pending confirmation"
-    | "completed";
-  meetupTime?: string;
-  meetupLocation?: string;
-  meetupNotes?: string;
-  buyerConfirmed?: boolean;
-  sellerConfirmed?: boolean;
-  createdAt: number;
+function findUserInState(
+  state: MarketplaceDashboardState,
+  userId: string,
+): UserAccount | null {
+  return (
+    [...state.sellers, ...state.buyers].find(
+      (user) => user.id === userId,
+    ) ?? null
+  );
 }
 
-const MOCK_BUYER_NAMES = [
-  "Sarah M.",
-  "Mike T.",
-  "Emily R.",
-  "James K.",
-  "Lisa P.",
-];
-const MOCK_SELLER_NAMES = [
-  "Alex W.",
-  "Jordan S.",
-  "Taylor B.",
-  "Casey D.",
-  "Morgan L.",
-];
+function formatOrderStatus(status: OrderStatus): string {
+  switch (status) {
+    case "AwaitingConfirmation":
+      return "Awaiting Confirmation";
+    case "ReadySoon":
+      return "Ready Soon";
+    case "ReadyForPickup":
+      return "Ready for Pickup";
+    default:
+      return status;
+  }
+}
 
-function generateMockRequests(): Request[] {
-  const items = [
-    "Burger & Fries",
-    "Pizza Slice",
-    "Sandwich",
-    "Pasta Bowl",
-  ];
-  const locations = [
-    "Newcomb Hall",
-    "Observatory Hill Dining",
-    "Runk Dining Hall",
-  ];
-  const requests: Request[] = [];
+function buildBuyerRequestSummaries(
+  state: MarketplaceDashboardState,
+  buyerId: string,
+): BuyerRequestSummary[] {
+  const grouped = new Map<
+    string,
+    {
+      id: string;
+      requestGroupId: string;
+      item: string;
+      location: string;
+      price: number;
+      createdAt: number;
+    }
+  >();
 
-  for (let i = 0; i < 3; i++) {
-    requests.push({
-      id: `mock-${i}`,
-      item: items[Math.floor(Math.random() * items.length)],
-      price: Math.floor(Math.random() * 6) + 5,
-      location:
-        locations[Math.floor(Math.random() * locations.length)],
-      buyerName:
-        MOCK_BUYER_NAMES[
-          Math.floor(Math.random() * MOCK_BUYER_NAMES.length)
-        ],
-      status: "pending",
-      createdAt: Date.now() - Math.random() * 3600000,
+  for (const order of state.orders) {
+    if (order.buyerId !== buyerId) {
+      continue;
+    }
+
+    grouped.set(order.requestGroupId, {
+      id: order.requestGroupId,
+      requestGroupId: order.requestGroupId,
+      item: order.item,
+      location: order.location,
+      price: order.offeredPrice,
+      createdAt: Date.parse(order.createdAtUtc),
     });
   }
 
-  return requests;
+  for (const offer of state.offers) {
+    if (offer.buyerId !== buyerId || grouped.has(offer.requestGroupId)) {
+      continue;
+    }
+
+    grouped.set(offer.requestGroupId, {
+      id: offer.requestGroupId,
+      requestGroupId: offer.requestGroupId,
+      item: offer.item,
+      location: offer.location,
+      price: offer.price,
+      createdAt: Date.parse(offer.createdAtUtc),
+    });
+  }
+
+  return Array.from(grouped.values())
+    .map((group) => {
+      const matchingOrder = state.orders.find(
+        (order) =>
+          order.buyerId === buyerId &&
+          order.requestGroupId === group.requestGroupId,
+      );
+
+      if (matchingOrder) {
+        return {
+          id: group.id,
+          requestGroupId: group.requestGroupId,
+          item: group.item,
+          location: group.location,
+          price: group.price,
+          statusLabel: formatOrderStatus(matchingOrder.status),
+          sellerName: matchingOrder.sellerName,
+          exchangeId: matchingOrder.id,
+          createdAt: group.createdAt,
+        };
+      }
+
+      const relatedOffers = state.offers.filter(
+        (offer) =>
+          offer.buyerId === buyerId &&
+          offer.requestGroupId === group.requestGroupId,
+      );
+      const acceptedOffer = relatedOffers.find(
+        (offer) => offer.status === "Accepted",
+      );
+      const hasPendingOffer = relatedOffers.some(
+        (offer) => offer.status === "Pending",
+      );
+
+      return {
+        id: group.id,
+        requestGroupId: group.requestGroupId,
+        item: group.item,
+        location: group.location,
+        price: group.price,
+        statusLabel: acceptedOffer
+          ? "Accepted"
+          : hasPendingOffer
+            ? "Pending"
+            : "Declined",
+        sellerName: acceptedOffer?.sellerName,
+        createdAt: group.createdAt,
+      };
+    })
+    .sort((left, right) => right.createdAt - left.createdAt)
+    .map(({ createdAt: _createdAt, ...summary }) => summary);
+}
+
+function sortNewest<T extends { createdAtUtc: string }>(items: T[]): T[] {
+  return [...items].sort(
+    (left, right) =>
+      Date.parse(right.createdAtUtc) - Date.parse(left.createdAtUtc),
+  );
 }
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>("home");
-  const [previousScreen, setPreviousScreen] = useState<Screen>("role-selection");
-  const [userRole, setUserRole] = useState<
-    "buyer" | "seller" | null
-  >(null);
+  const [previousScreen, setPreviousScreen] =
+    useState<Screen>("role-selection");
+  const [userRole, setUserRole] = useState<"buyer" | "seller" | null>(
+    null,
+  );
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(
     null,
   );
-  const [requests, setRequests] = useState<Request[]>(
-    generateMockRequests(),
-  );
-  const [myRequests, setMyRequests] = useState<Request[]>([]);
-  const [myAcceptedRequests, setMyAcceptedRequests] = useState<
-    Request[]
-  >([]);
+  const [dashboardState, setDashboardState] =
+    useState<MarketplaceDashboardState | null>(null);
+  const [isStateLoading, setIsStateLoading] = useState(false);
   const [selectedExchangeId, setSelectedExchangeId] = useState<
     string | null
   >(null);
-  const [sellerBalance, setSellerBalance] = useState(0);
 
-  const currentUserName = currentUser?.name ?? "You";
+  const applyDashboardState = (state: MarketplaceDashboardState) => {
+    setDashboardState(state);
+    setCurrentUser((previousUser) => {
+      if (!previousUser) {
+        return previousUser;
+      }
 
-  const resetMarketplaceState = () => {
-    setRequests(generateMockRequests());
-    setMyRequests([]);
-    setMyAcceptedRequests([]);
-    setSelectedExchangeId(null);
+      return findUserInState(state, previousUser.id) ?? previousUser;
+    });
   };
+
+  useEffect(() => {
+    if (!currentUser) {
+      setDashboardState(null);
+      setIsStateLoading(false);
+      return;
+    }
+
+    let isActive = true;
+    setIsStateLoading(true);
+
+    void loadDashboardState()
+      .then((state) => {
+        if (!isActive) {
+          return;
+        }
+
+        applyDashboardState(state);
+      })
+      .catch((error) => {
+        if (!isActive) {
+          return;
+        }
+
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Unable to load marketplace data.",
+        );
+      })
+      .finally(() => {
+        if (isActive) {
+          setIsStateLoading(false);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [currentUser?.id]);
 
   const handleGetStarted = () => {
     setScreen("auth");
@@ -133,6 +246,7 @@ export default function App() {
     ) {
       setPreviousScreen(screen);
     }
+
     setScreen("profile");
   };
 
@@ -143,12 +257,9 @@ export default function App() {
   const handleAuthenticated = (user: AuthUser) => {
     setCurrentUser(user);
     setUserRole(null);
-    setSellerBalance(user.walletBalance ?? 0);
-    resetMarketplaceState();
+    setSelectedExchangeId(null);
     setScreen("role-selection");
-    toast.success(
-      `Signed in as ${user.name}.`,
-    );
+    toast.success(`Signed in as ${user.name}.`);
   };
 
   const handleSetSellingMode = async (nextValue: boolean) => {
@@ -156,38 +267,25 @@ export default function App() {
       return;
     }
 
-    const response = await fetch(
-      `${API_BASE}/sellers/${currentUser.id}/availability`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isAvailable: nextValue }),
-      },
-    );
-
-    const payload =
-      ((await response.json().catch(() => null)) as
-        | { error?: string }
-        | null) ?? null;
-
-    if (!response.ok) {
+    try {
+      const nextState = await setSellingAvailability(
+        currentUser.id,
+        nextValue,
+      );
+      applyDashboardState(nextState);
+      toast.success(
+        nextValue
+          ? "Selling mode is live."
+          : "Selling mode is paused.",
+      );
+    } catch (error) {
       const message =
-        payload?.error ?? "Unable to update selling mode.";
+        error instanceof Error
+          ? error.message
+          : "Unable to update selling mode.";
       toast.error(message);
-      throw new Error(message);
+      throw error;
     }
-
-    setCurrentUser((prev) =>
-      prev
-        ? { ...prev, mealExchangeAvailable: nextValue }
-        : prev,
-    );
-
-    toast.success(
-      nextValue
-        ? "Selling mode is live."
-        : "Selling mode is paused.",
-    );
   };
 
   const handleSelectRole = (role: "buyer" | "seller") => {
@@ -195,135 +293,62 @@ export default function App() {
     setScreen(role);
   };
 
-  const handleCreateRequest = (requestData: {
+  const handleCreateRequest = (request: {
     item: string;
     price: number;
     location: string;
   }) => {
-    const newRequest: Request = {
-      id: `req-${Date.now()}`,
-      ...requestData,
-      buyerName: currentUserName,
-      status: "pending",
-      createdAt: Date.now(),
-    };
+    if (!currentUser) {
+      return;
+    }
 
-    setMyRequests([...myRequests, newRequest]);
-    setRequests([...requests, newRequest]);
-
-    toast.success(
-      "Request sent! Waiting for a seller to accept...",
-    );
-
-    // Simulate seller accepting after 3 seconds
-    setTimeout(() => {
-      const sellerName =
-        MOCK_SELLER_NAMES[
-          Math.floor(Math.random() * MOCK_SELLER_NAMES.length)
-        ];
-      setMyRequests((prev) =>
-        prev.map((r) =>
-          r.id === newRequest.id
-            ? {
-                ...r,
-                status: "matched",
-                sellerId: "seller-1",
-                sellerName,
-              }
-            : r,
-        ),
-      );
-      toast.success(`Matched with ${sellerName}!`);
-    }, 3000);
+    void createOffer({
+      buyerId: currentUser.id,
+      item: request.item,
+      location: request.location,
+      price: request.price,
+    })
+      .then((nextState) => {
+        applyDashboardState(nextState);
+        toast.success("Request sent to available sellers.");
+      })
+      .catch((error) => {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Unable to create request.",
+        );
+      });
   };
 
-  const handleAcceptRequest = (requestId: string) => {
-    const request = requests.find((r) => r.id === requestId);
-    if (!request) return;
-
-    const acceptedRequest: Request = {
-      ...request,
-      status: "matched",
-      sellerId: currentUser?.id ?? "current-user",
-      sellerName: currentUserName,
-    };
-
-    setMyAcceptedRequests([
-      ...myAcceptedRequests,
-      acceptedRequest,
-    ]);
-    setRequests(requests.filter((r) => r.id !== requestId));
-
-    toast.success(`Request accepted! Propose a meeting time.`);
+  const handleAcceptRequest = (offerId: string) => {
+    void decideOffer(offerId, true)
+      .then((nextState) => {
+        applyDashboardState(nextState);
+        toast.success("Request accepted.");
+      })
+      .catch((error) => {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Unable to accept request.",
+        );
+      });
   };
 
-  const handleProposeMeetup = (meetupDetails: {
-    time: string;
-    location: string;
-    notes: string;
-  }) => {
-    if (!selectedExchangeId) return;
-
-    const updateRequest = (req: Request) => {
-      if (req.id === selectedExchangeId) {
-        return {
-          ...req,
-          status: "meeting scheduled" as const,
-          meetupTime: meetupDetails.time,
-          meetupLocation: meetupDetails.location,
-          meetupNotes: meetupDetails.notes,
-        };
-      }
-      return req;
-    };
-
-    setMyRequests((prev) => prev.map(updateRequest));
-    setMyAcceptedRequests((prev) => prev.map(updateRequest));
-
-    toast.success("Meeting details sent to buyer!");
-  };
-
-  const handleConfirmExchange = () => {
-    if (!selectedExchangeId) return;
-
-    const updateRequest = (req: Request) => {
-      if (req.id === selectedExchangeId) {
-        const buyerConfirmed =
-          userRole === "buyer" ? true : req.buyerConfirmed;
-        const sellerConfirmed =
-          userRole === "seller" ? true : req.sellerConfirmed;
-
-        if (buyerConfirmed && sellerConfirmed) {
-          // Both confirmed, complete the transaction
-          if (userRole === "seller") {
-            setSellerBalance((prev) => prev + req.price);
-          }
-          toast.success(
-            "Exchange completed! Payment processed.",
-          );
-          return {
-            ...req,
-            status: "completed" as const,
-            buyerConfirmed,
-            sellerConfirmed,
-          };
-        } else {
-          toast.success(
-            "Confirmation received! Waiting for the other person...",
-          );
-          return {
-            ...req,
-            status: "pending confirmation" as const,
-            buyerConfirmed,
-            sellerConfirmed,
-          };
-        }
-      }
-      return req;
-    };
-
-    setMyRequests((prev) => prev.map(updateRequest));
-    setMyAcceptedRequests((prev) => prev.map(updateRequest));
+  const handleDeclineRequest = (offerId: string) => {
+    void decideOffer(offerId, false)
+      .then((nextState) => {
+        applyDashboardState(nextState);
+        toast.success("Request declined.");
+      })
+      .catch((error) => {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Unable to decline request.",
+        );
+      });
   };
 
   const handleViewExchange = (exchangeId: string) => {
@@ -333,7 +358,7 @@ export default function App() {
 
   const handleBackFromExchange = () => {
     setSelectedExchangeId(null);
-    setScreen(userRole!);
+    setScreen(userRole ?? "role-selection");
   };
 
   const handleBackToRoleSelection = () => {
@@ -341,14 +366,133 @@ export default function App() {
     setScreen("role-selection");
   };
 
-  const getSelectedExchange = (): Request | null => {
-    if (!selectedExchangeId) return null;
-    const allExchanges = [...myRequests, ...myAcceptedRequests];
-    return (
-      allExchanges.find((r) => r.id === selectedExchangeId) ||
-      null
-    );
+  const handleConfirmOrder = async (orderId: string) => {
+    try {
+      const nextState = await confirmOrder(orderId);
+      applyDashboardState(nextState);
+      toast.success("Order confirmed.");
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unable to confirm order.";
+      toast.error(message);
+      throw error;
+    }
   };
+
+  const handleUpdateTracking = async (
+    orderId: string,
+    status: OrderStatus,
+    detail: string,
+    estimatedReadyAtUtc?: string | null,
+  ) => {
+    try {
+      const nextState = await updateOrderTracking(
+        orderId,
+        status,
+        detail,
+        estimatedReadyAtUtc,
+      );
+      applyDashboardState(nextState);
+      toast.success(
+        status === "Completed"
+          ? "Exchange marked complete."
+          : "Tracking updated.",
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unable to update tracking.";
+      toast.error(message);
+      throw error;
+    }
+  };
+
+  const handleWithdraw = async (amount: number) => {
+    if (!currentUser) {
+      return;
+    }
+
+    try {
+      const nextState = await withdrawFunds(currentUser.id, amount);
+      applyDashboardState(nextState);
+      toast.success(`Withdrawal requested for $${amount.toFixed(2)}.`);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unable to withdraw funds.";
+      toast.error(message);
+      throw error;
+    }
+  };
+
+  const currentUserId = currentUser?.id ?? "";
+  const currentUserState = currentUserId
+    ? findUserInState(dashboardState ?? {
+        sellers: [],
+        buyers: [],
+        offers: [],
+        orders: [],
+        notifications: [],
+        withdrawals: [],
+        metrics: {
+          availableSellerCount: 0,
+          pendingOfferCount: 0,
+          activeOrderCount: 0,
+          sellerWalletTotal: 0,
+          platformEscrowTotal: 0,
+        },
+      }, currentUserId)
+    : null;
+  const effectiveUser = currentUserState ?? currentUser;
+
+  const buyerRequests = dashboardState
+    ? buildBuyerRequestSummaries(dashboardState, currentUserId)
+    : [];
+  const availableRequests = dashboardState
+    ? sortNewest(
+        dashboardState.offers.filter(
+          (offer) =>
+            offer.sellerId === currentUserId &&
+            offer.status === "Pending",
+        ),
+      )
+    : [];
+  const myAcceptedRequests = dashboardState
+    ? sortNewest(
+        dashboardState.orders.filter(
+          (order) => order.sellerId === currentUserId,
+        ),
+      )
+    : [];
+  const notifications = dashboardState
+    ? sortNewest(
+        dashboardState.notifications.filter(
+          (notification) => notification.userId === currentUserId,
+        ),
+      )
+    : [];
+  const withdrawals = dashboardState
+    ? sortNewest(
+        dashboardState.withdrawals.filter(
+          (withdrawal) => withdrawal.sellerId === currentUserId,
+        ),
+      )
+    : [];
+  const selectedExchange: OrderRecord | null =
+    dashboardState?.orders.find(
+      (order) => order.id === selectedExchangeId,
+    ) ?? null;
+
+  const showLoadingState =
+    !!currentUser &&
+    isStateLoading &&
+    !dashboardState &&
+    screen !== "home" &&
+    screen !== "auth";
 
   return (
     <>
@@ -365,60 +509,76 @@ export default function App() {
           />
         )}
 
-        {screen === "profile" && currentUser && (
-          <ProfilePage
-            onBack={closeProfile}
-            onProfileClick={openProfile}
-            onSetSellingMode={handleSetSellingMode}
-            user={currentUser}
-          />
+        {showLoadingState && (
+          <div className="flex min-h-screen items-center justify-center bg-[#efefef] px-6">
+            <div className="w-full max-w-md rounded-xl bg-white p-6 text-center shadow-sm">
+              <h1 className="text-xl font-bold">Loading marketplace</h1>
+              <p className="mt-2 text-sm text-gray-600">
+                Pulling the latest buyer, seller, and exchange state.
+              </p>
+            </div>
+          </div>
         )}
 
-        {screen === "role-selection" && (
+        {!showLoadingState &&
+          screen === "profile" &&
+          effectiveUser && (
+            <ProfilePage
+              notifications={notifications}
+              onBack={closeProfile}
+              onProfileClick={openProfile}
+              onSetSellingMode={handleSetSellingMode}
+              onWithdraw={handleWithdraw}
+              user={effectiveUser}
+              withdrawals={withdrawals}
+            />
+          )}
+
+        {!showLoadingState && screen === "role-selection" && (
           <RoleSelection
             onProfileClick={openProfile}
             onSelectRole={handleSelectRole}
           />
         )}
 
-        {screen === "buyer" && (
+        {!showLoadingState && screen === "buyer" && (
           <BuyerDashboard
+            activeRequests={buyerRequests}
             onBack={handleBackToRoleSelection}
-            onProfileClick={openProfile}
             onCreateRequest={handleCreateRequest}
-            activeRequests={myRequests}
+            onProfileClick={openProfile}
             onViewExchange={handleViewExchange}
           />
         )}
 
-        {screen === "seller" && (
+        {!showLoadingState && screen === "seller" && (
           <SellerDashboard
-            onBack={handleBackToRoleSelection}
+            availableRequests={availableRequests}
+            balance={effectiveUser?.walletBalance ?? 0}
             isSellingModeEnabled={
-              currentUser?.mealExchangeAvailable ?? false
+              effectiveUser?.mealExchangeAvailable ?? false
             }
+            myAcceptedRequests={myAcceptedRequests}
+            onAcceptRequest={handleAcceptRequest}
+            onBack={handleBackToRoleSelection}
+            onDeclineRequest={handleDeclineRequest}
             onProfileClick={openProfile}
             onSetSellingMode={handleSetSellingMode}
-            availableRequests={requests.filter(
-              (r) => r.status === "pending",
-            )}
-            onAcceptRequest={handleAcceptRequest}
-            myAcceptedRequests={myAcceptedRequests}
             onViewExchange={handleViewExchange}
-            balance={sellerBalance}
           />
         )}
 
-        {screen === "exchange" &&
-          selectedExchangeId &&
-          getSelectedExchange() && (
+        {!showLoadingState &&
+          screen === "exchange" &&
+          selectedExchange &&
+          userRole && (
             <ExchangeView
+              exchange={selectedExchange}
               onBack={handleBackFromExchange}
+              onConfirmOrder={handleConfirmOrder}
               onProfileClick={openProfile}
-              exchange={getSelectedExchange()!}
-              userRole={userRole!}
-              onProposeMeetup={handleProposeMeetup}
-              onConfirmExchange={handleConfirmExchange}
+              onUpdateTracking={handleUpdateTracking}
+              userRole={userRole}
             />
           )}
       </div>

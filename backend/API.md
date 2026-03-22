@@ -16,6 +16,35 @@ METHOD http://localhost:5009/api/...
 
 ## Endpoints
 
+### `POST /api/auth/signup`
+
+Creates a marketplace account.
+
+Request body:
+
+```json
+{
+  "email": "student@virginia.edu",
+  "name": "Alex Student",
+  "password": "password123",
+  "role": "Buyer",
+  "headline": "Happy to trade meal exchanges."
+}
+```
+
+### `POST /api/auth/login`
+
+Logs a user in with email and password.
+
+Request body:
+
+```json
+{
+  "email": "student@virginia.edu",
+  "password": "password123"
+}
+```
+
 ### `GET /api/demo/state`
 
 Returns the full marketplace state for the demo UI:
@@ -65,6 +94,8 @@ Request body:
 ```json
 {
   "buyerId": "buyer-1",
+  "item": "Burrito",
+  "location": "Newcomb Hall",
   "price": 12.5
 }
 ```

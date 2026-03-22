@@ -15,6 +15,8 @@ create table if not exists public.offers (
     request_group_id text not null,
     buyer_id text not null references public.marketplace_users(id),
     seller_id text not null references public.marketplace_users(id),
+    item text not null default '',
+    location text not null default '',
     price numeric(10, 2) not null,
     status text not null check (status in ('Pending', 'Accepted', 'Declined')),
     created_at timestamptz not null
@@ -27,6 +29,8 @@ create table if not exists public.orders (
     invoice_id text not null,
     buyer_id text not null references public.marketplace_users(id),
     seller_id text not null references public.marketplace_users(id),
+    item text not null default '',
+    location text not null default '',
     offered_price numeric(10, 2) not null,
     grubhub_confirmed boolean not null default false,
     funds_released_to_seller boolean not null default false,
@@ -34,6 +38,14 @@ create table if not exists public.orders (
     created_at timestamptz not null,
     estimated_ready_at_utc timestamptz null
 );
+
+alter table if exists public.offers
+    add column if not exists item text not null default '',
+    add column if not exists location text not null default '';
+
+alter table if exists public.orders
+    add column if not exists item text not null default '',
+    add column if not exists location text not null default '';
 
 create table if not exists public.tracking_events (
     id text primary key,

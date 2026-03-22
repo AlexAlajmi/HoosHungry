@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Input } from "./ui/input";
+import type { UserAccount } from "../types";
 import {
   Select,
   SelectContent,
@@ -13,15 +14,7 @@ import {
   SelectValue,
 } from "./ui/select";
 
-export interface AuthUser {
-  id: string;
-  email: string;
-  name: string;
-  role: "Seller" | "Buyer";
-  mealExchangeAvailable: boolean;
-  walletBalance: number;
-  headline: string;
-}
+export type AuthUser = UserAccount;
 
 interface ApiError {
   error?: string;

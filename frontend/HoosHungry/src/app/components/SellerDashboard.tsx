@@ -3,15 +3,17 @@ import SellingModeControl from './SellingModeControl';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { ArrowLeft, DollarSign } from 'lucide-react';
+import type { OfferRecord, OrderRecord } from '../types';
 
 interface SellerDashboardProps {
   onBack: () => void;
   onProfileClick: () => void;
   onSetSellingMode: (nextValue: boolean) => Promise<void>;
-  availableRequests: any[];
+  availableRequests: OfferRecord[];
   isSellingModeEnabled: boolean;
   onAcceptRequest: (requestId: string) => void;
-  myAcceptedRequests: any[];
+  onDeclineRequest: (requestId: string) => void;
+  myAcceptedRequests: OrderRecord[];
   onViewExchange: (exchangeId: string) => void;
   balance: number;
 }
@@ -23,6 +25,7 @@ export default function SellerDashboard({
   availableRequests,
   isSellingModeEnabled,
   onAcceptRequest,
+  onDeclineRequest,
   myAcceptedRequests,
   onViewExchange,
   balance
@@ -75,12 +78,21 @@ export default function SellerDashboard({
                       <p className="font-bold text-xl text-[#fd6500]">${request.price.toFixed(2)}</p>
                     </div>
                   </div>
-                  <Button
-                    onClick={() => onAcceptRequest(request.id)}
-                    className="w-full bg-[#fd6500] hover:bg-[#e55a00]"
-                  >
-                    Accept Request
-                  </Button>
+                  <div className="flex gap-3">
+                    <Button
+                      onClick={() => onAcceptRequest(request.id)}
+                      className="flex-1 bg-[#fd6500] hover:bg-[#e55a00]"
+                    >
+                      Accept Request
+                    </Button>
+                    <Button
+                      onClick={() => onDeclineRequest(request.id)}
+                      className="flex-1"
+                      variant="outline"
+                    >
+                      Decline
+                    </Button>
+                  </div>
                 </Card>
               ))}
             </div>
@@ -110,7 +122,7 @@ export default function SellerDashboard({
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-xl text-[#fd6500]">${request.price.toFixed(2)}</p>
+                      <p className="font-bold text-xl text-[#fd6500]">${request.offeredPrice.toFixed(2)}</p>
                       <p className="text-xs mt-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full inline-block">
                         {request.status}
                       </p>

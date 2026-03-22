@@ -51,6 +51,8 @@ public sealed class OfferRecord
     public string BuyerName { get; set; } = string.Empty;
     public string SellerId { get; set; } = string.Empty;
     public string SellerName { get; set; } = string.Empty;
+    public string Item { get; set; } = string.Empty;
+    public string Location { get; set; } = string.Empty;
     public decimal Price { get; set; }
     public OfferStatus Status { get; set; }
     public DateTime CreatedAtUtc { get; set; }
@@ -76,6 +78,8 @@ public sealed class OrderRecord
     public string BuyerName { get; set; } = string.Empty;
     public string SellerId { get; set; } = string.Empty;
     public string SellerName { get; set; } = string.Empty;
+    public string Item { get; set; } = string.Empty;
+    public string Location { get; set; } = string.Empty;
     public decimal OfferedPrice { get; set; }
     public bool GrubhubConfirmed { get; set; }
     public bool FundsReleasedToSeller { get; set; }
@@ -131,6 +135,8 @@ public sealed class SetAvailabilityRequest
 public sealed class CreateOfferRequest
 {
     public string BuyerId { get; set; } = string.Empty;
+    public string Item { get; set; } = string.Empty;
+    public string Location { get; set; } = string.Empty;
     public decimal Price { get; set; }
 }
 
@@ -215,6 +221,12 @@ public sealed class SupabaseOfferRow
     [JsonPropertyName("price")]
     public decimal Price { get; set; }
 
+    [JsonPropertyName("item")]
+    public string Item { get; set; } = string.Empty;
+
+    [JsonPropertyName("location")]
+    public string Location { get; set; } = string.Empty;
+
     [JsonPropertyName("status")]
     public string Status { get; set; } = string.Empty;
 
@@ -241,6 +253,12 @@ public sealed class SupabaseOrderRow
 
     [JsonPropertyName("seller_id")]
     public string SellerId { get; set; } = string.Empty;
+
+    [JsonPropertyName("item")]
+    public string Item { get; set; } = string.Empty;
+
+    [JsonPropertyName("location")]
+    public string Location { get; set; } = string.Empty;
 
     [JsonPropertyName("offered_price")]
     public decimal OfferedPrice { get; set; }

@@ -5,12 +5,13 @@ import { Input } from './ui/input';
 import { Card } from './ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { ArrowLeft, Plus } from 'lucide-react';
+import type { BuyerRequestSummary } from '../types';
 
 interface BuyerDashboardProps {
   onBack: () => void;
   onProfileClick: () => void;
   onCreateRequest: (request: { item: string; price: number; location: string }) => void;
-  activeRequests: any[];
+  activeRequests: BuyerRequestSummary[];
   onViewExchange: (exchangeId: string) => void;
 }
 
@@ -148,8 +149,10 @@ export default function BuyerDashboard({ onBack, onProfileClick, onCreateRequest
               {activeRequests.map((request) => (
                 <Card
                   key={request.id}
-                  className="p-4 cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => onViewExchange(request.id)}
+                  className={request.exchangeId
+                    ? "p-4 cursor-pointer hover:shadow-md transition-shadow"
+                    : "p-4"}
+                  onClick={() => request.exchangeId && onViewExchange(request.exchangeId)}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -164,7 +167,7 @@ export default function BuyerDashboard({ onBack, onProfileClick, onCreateRequest
                     <div className="text-right">
                       <p className="font-bold text-xl text-[#fd6500]">${request.price.toFixed(2)}</p>
                       <p className="text-xs mt-1 px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full inline-block">
-                        {request.status}
+                        {request.statusLabel}
                       </p>
                     </div>
                   </div>

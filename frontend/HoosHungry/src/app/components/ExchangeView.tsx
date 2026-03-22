@@ -5,14 +5,20 @@ import { Card } from './ui/card';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { ArrowLeft, MapPin, Clock, CheckCircle2, User } from 'lucide-react';
+import type { OrderRecord, OrderStatus } from '../types';
 
 interface ExchangeViewProps {
   onBack: () => void;
   onProfileClick: () => void;
-  exchange: any;
+  exchange: OrderRecord;
   userRole: 'buyer' | 'seller';
-  onProposeMeetup: (meetupDetails: { time: string; location: string; notes: string }) => void;
-  onConfirmExchange: () => void;
+  onConfirmOrder: (orderId: string) => Promise<void>;
+  onUpdateTracking: (
+    orderId: string,
+    status: OrderStatus,
+    detail: string,
+    estimatedReadyAtUtc?: string | null,
+  ) => Promise<void>;
 }
 
 export default function ExchangeView({
@@ -20,26 +26,24 @@ export default function ExchangeView({
   onProfileClick,
   exchange,
   userRole,
-  onProposeMeetup,
-  onConfirmExchange
+  onConfirmOrder,
+  onUpdateTracking
 }: ExchangeViewProps) {
-  const [showMeetupForm, setShowMeetupForm] = useState(false);
-  const [meetupTime, setMeetupTime] = useState('');
-  const [meetupLocation, setMeetupLocation] = useState(exchange.location);
-  const [notes, setNotes] = useState('');
+  const [trackingNote, setTrackingNote] = useState('');
+  const [etaInput, setEtaInput] = useState('');
 
-  const handlePropose = () => {
-    if (meetupTime && meetupLocation) {
-      onProposeMeetup({ time: meetupTime, location: meetupLocation, notes });
-      setShowMeetupForm(false);
-    }
+  const isComplete = exchange.status === 'Completed';
+  const canManageTracking =
+    userRole === 'seller' && exchange.grubhubConfirmed && !isComplete;
+
+  const handleTrackingUpdate = (status: OrderStatus, fallbackDetail: string) => {
+    return onUpdateTracking(
+      exchange.id,
+      status,
+      trackingNote.trim() || fallbackDetail,
+      etaInput ? new Date(etaInput).toISOString() : null,
+    );
   };
-
-  const canConfirm = exchange.status === 'meeting scheduled' || exchange.status === 'pending confirmation';
-  const isComplete = exchange.status === 'completed';
-  const waitingForOther = exchange.status === 'pending confirmation' &&
-    ((userRole === 'buyer' && exchange.buyerConfirmed) ||
-     (userRole === 'seller' && exchange.sellerConfirmed));
 
   return (
     <div className="min-h-screen bg-[#efefef]">
@@ -59,7 +63,7 @@ export default function ExchangeView({
               <p className="text-gray-600">{exchange.location}</p>
             </div>
             <div className="text-right">
-              <p className="font-bold text-3xl text-[#fd6500]">${exchange.price.toFixed(2)}</p>
+              <p className="font-bold text-3xl text-[#fd6500]">${exchange.offeredPrice.toFixed(2)}</p>
             </div>
           </div>
 
@@ -72,6 +76,10 @@ export default function ExchangeView({
               <User className="h-4 w-4 text-gray-500" />
               <span className="font-semibold">Seller:</span> {exchange.sellerName}
             </div>
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-gray-500" />
+              <span className="font-semibold">Status:</span> {exchange.status}
+            </div>
           </div>
         </Card>
 
@@ -82,122 +90,163 @@ export default function ExchangeView({
             <p className="text-gray-700">
               {userRole === 'buyer'
                 ? 'Payment processed successfully. Enjoy your meal!'
-                : `$${exchange.price.toFixed(2)} has been added to your balance.`}
+                : `$${exchange.offeredPrice.toFixed(2)} has been added to your balance.`}
             </p>
           </Card>
         ) : (
           <>
-            {exchange.meetupTime ? (
-              <Card className="p-6 mb-4 bg-blue-50 border-blue-200">
-                <h3 className="font-bold text-lg mb-3">Meeting Details</h3>
+            <Card className="p-6 mb-4 bg-blue-50 border-blue-200">
+              <h3 className="font-bold text-lg mb-3">Tracking History</h3>
+              {exchange.trackingEvents.length === 0 ? (
+                <p className="text-sm text-gray-600">
+                  No tracking updates yet.
+                </p>
+              ) : (
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-blue-600" />
-                    <span>{exchange.meetupTime}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-blue-600" />
-                    <span>{exchange.meetupLocation}</span>
-                  </div>
-                  {exchange.meetupNotes && (
-                    <p className="text-sm text-gray-700 mt-3 pt-3 border-t">
-                      <span className="font-semibold">Note:</span> {exchange.meetupNotes}
-                    </p>
-                  )}
-                </div>
-              </Card>
-            ) : (
-              <>
-                {userRole === 'seller' && !showMeetupForm && (
-                  <Button
-                    onClick={() => setShowMeetupForm(true)}
-                    className="w-full mb-4 bg-[#fd6500] hover:bg-[#e55a00] h-12"
-                  >
-                    Propose Meeting Time & Place
-                  </Button>
-                )}
-
-                {showMeetupForm && (
-                  <Card className="p-6 mb-4">
-                    <h3 className="font-bold text-lg mb-4">Propose Meetup</h3>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block mb-2 font-semibold">Time</label>
-                        <Input
-                          type="datetime-local"
-                          value={meetupTime}
-                          onChange={(e) => setMeetupTime(e.target.value)}
-                        />
+                  {exchange.trackingEvents.map((event) => (
+                    <div key={event.id} className="border-b border-blue-100 pb-3 last:border-b-0">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-blue-600" />
+                        <span className="font-semibold">{event.label}</span>
                       </div>
-                      <div>
-                        <label className="block mb-2 font-semibold">Location</label>
-                        <Input
-                          value={meetupLocation}
-                          onChange={(e) => setMeetupLocation(e.target.value)}
-                          placeholder="e.g., Front entrance of Newcomb Hall"
-                        />
-                      </div>
-                      <div>
-                        <label className="block mb-2 font-semibold">Notes (optional)</label>
-                        <Textarea
-                          value={notes}
-                          onChange={(e) => setNotes(e.target.value)}
-                          placeholder="e.g., I'll be wearing a blue jacket"
-                        />
-                      </div>
-                      <div className="flex gap-3">
-                        <Button
-                          onClick={handlePropose}
-                          className="flex-1 bg-[#fd6500] hover:bg-[#e55a00]"
-                          disabled={!meetupTime || !meetupLocation}
-                        >
-                          Send Proposal
-                        </Button>
-                        <Button
-                          onClick={() => setShowMeetupForm(false)}
-                          variant="outline"
-                          className="flex-1"
-                        >
-                          Cancel
-                        </Button>
-                      </div>
+                      <p className="mt-1 text-sm text-gray-700">{event.detail}</p>
+                      {event.estimatedReadyAtUtc && (
+                        <div className="mt-2 flex items-center gap-2 text-sm text-blue-700">
+                          <MapPin className="h-4 w-4" />
+                          <span>ETA: {new Date(event.estimatedReadyAtUtc).toLocaleString()}</span>
+                        </div>
+                      )}
                     </div>
-                  </Card>
-                )}
+                  ))}
+                </div>
+              )}
+            </Card>
 
-                {userRole === 'buyer' && !exchange.meetupTime && (
-                  <Card className="p-6 mb-4 text-center text-gray-600">
-                    Waiting for seller to propose a meeting time and location...
-                  </Card>
-                )}
-              </>
+            {userRole === 'seller' && !exchange.grubhubConfirmed && (
+              <Card className="p-6 mb-4">
+                <h3 className="font-bold text-lg mb-3">Confirm Meal Exchange Order</h3>
+                <p className="text-gray-700 mb-4">
+                  Once you have the meal exchange ready to place, confirm it here to move the order into active tracking.
+                </p>
+                <Button
+                  onClick={() => onConfirmOrder(exchange.id)}
+                  className="w-full bg-[#fd6500] hover:bg-[#e55a00] h-12"
+                >
+                  Confirm Order in GrubHub
+                </Button>
+              </Card>
             )}
 
-            {canConfirm && (
+            {canManageTracking && (
               <Card className="p-6">
-                <h3 className="font-bold text-lg mb-3">Confirm Exchange</h3>
+                <h3 className="font-bold text-lg mb-3">Update Order Status</h3>
                 <p className="text-gray-700 mb-4">
-                  Once you meet in person and complete the exchange, tap the button below.
-                  Both parties must confirm before payment is processed.
+                  Send buyer-facing tracking updates as the meal exchange moves from preparation to pickup and completion.
                 </p>
-
-                {waitingForOther ? (
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
-                    <CheckCircle2 className="h-8 w-8 text-yellow-600 mx-auto mb-2" />
-                    <p className="font-semibold text-yellow-900">You've confirmed!</p>
-                    <p className="text-sm text-yellow-700 mt-1">
-                      Waiting for the other person to confirm...
-                    </p>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block mb-2 font-semibold">Tracking note</label>
+                    <Textarea
+                      placeholder="Optional detail for the buyer"
+                      value={trackingNote}
+                      onChange={(event) => setTrackingNote(event.target.value)}
+                    />
                   </div>
-                ) : (
-                  <Button
-                    onClick={onConfirmExchange}
-                    className="w-full bg-green-600 hover:bg-green-700 h-12"
-                  >
-                    <CheckCircle2 className="h-5 w-5 mr-2" />
-                    I Confirm the Exchange is Complete
-                  </Button>
-                )}
+                  <div>
+                    <label className="block mb-2 font-semibold">ETA (optional)</label>
+                    <Input
+                      type="datetime-local"
+                      value={etaInput}
+                      onChange={(event) => setEtaInput(event.target.value)}
+                    />
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <Button
+                      className="bg-[#fd6500] hover:bg-[#e55a00]"
+                      onClick={() =>
+                        handleTrackingUpdate(
+                          'ReadySoon',
+                          'Order should be ready soon.'
+                        )
+                      }
+                    >
+                      Mark Ready Soon
+                    </Button>
+                    <Button
+                      className="bg-blue-600 hover:bg-blue-700"
+                      onClick={() =>
+                        handleTrackingUpdate(
+                          'ReadyForPickup',
+                          'Meal exchange is ready for pickup.'
+                        )
+                      }
+                    >
+                      Mark Ready
+                    </Button>
+                    <Button
+                      className="bg-green-600 hover:bg-green-700"
+                      onClick={() =>
+                        handleTrackingUpdate(
+                          'Completed',
+                          'Exchange completed.'
+                        )
+                      }
+                    >
+                      Mark Complete
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            )}
+
+            {userRole === 'buyer' && !exchange.grubhubConfirmed && (
+              <Card className="p-6 text-center text-gray-600">
+                Waiting for the seller to confirm the meal exchange order.
+              </Card>
+            )}
+
+            {userRole === 'buyer' && exchange.grubhubConfirmed && !isComplete && (
+              <Card className="p-6">
+                <h3 className="font-bold text-lg mb-3">Order In Progress</h3>
+                <p className="text-gray-700">
+                  The seller is updating this order through the real tracking flow. Check back here for ready-soon and pickup updates.
+                </p>
+              </Card>
+            )}
+
+            {userRole === 'seller' && exchange.grubhubConfirmed && !canManageTracking && !isComplete && (
+              <Card className="p-6">
+                <h3 className="font-bold text-lg mb-3">Tracking Sent</h3>
+                <p className="text-gray-700">
+                  This exchange is already in progress. Continue using the status updates above as needed.
+                </p>
+              </Card>
+            )}
+
+            {userRole === 'buyer' && exchange.status === 'ReadyForPickup' && (
+              <Card className="p-6">
+                <h3 className="font-bold text-lg mb-3">Ready for Pickup</h3>
+                <p className="text-gray-700">
+                  The seller marked the meal exchange ready. Coordinate pickup and watch for the final completion update.
+                </p>
+              </Card>
+            )}
+
+            {userRole === 'seller' && exchange.status === 'ReadyForPickup' && (
+              <Card className="p-6">
+                <h3 className="font-bold text-lg mb-3">Ready to Finish</h3>
+                <p className="text-gray-700 mb-4">
+                  After the handoff is done, mark the exchange complete.
+                </p>
+                <Button
+                  onClick={() =>
+                    handleTrackingUpdate('Completed', 'Exchange completed.')
+                  }
+                  className="w-full bg-green-600 hover:bg-green-700 h-12"
+                >
+                  <CheckCircle2 className="h-5 w-5 mr-2" />
+                  Mark Exchange Complete
+                </Button>
               </Card>
             )}
           </>
