@@ -1,6 +1,8 @@
 # HoosHungry
 
-HoosHungry is a student meal-exchange marketplace. Buyers can request meals, sellers can accept requests using extra swipes, and both sides can track the order through pickup and completion.
+HoosHungry is a student meal-exchange marketplace. Buyers can request meals, sellers can accept requests using extra swipes, and both sides can track the order through pickup and completion.  
+
+[DevPost Link](https://devpost.com/software/hooshungry-pqnaby)
 
 [Demo Link](https://www.youtube.com/watch?v=W-Gr6ZOkuhY)
 
