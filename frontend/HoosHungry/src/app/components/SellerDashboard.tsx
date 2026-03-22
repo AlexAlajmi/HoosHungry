@@ -1,3 +1,4 @@
+import AppNavbar from './AppNavbar';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { ArrowLeft, DollarSign } from 'lucide-react';
@@ -20,8 +21,9 @@ export default function SellerDashboard({
   balance
 }: SellerDashboardProps) {
   return (
-    <div className="min-h-screen bg-[#efefef] p-6">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-[#efefef]">
+      <AppNavbar />
+      <div className="max-w-4xl mx-auto p-6">
         <div className="flex items-center gap-4 mb-6">
           <Button onClick={onBack} variant="ghost" size="icon">
             <ArrowLeft className="h-5 w-5" />
