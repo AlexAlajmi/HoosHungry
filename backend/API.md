@@ -168,6 +168,19 @@ fetch('http://localhost:5009/api/orders/ORDER_ID/confirm', {
 })
 ```
 
+### `POST /api/orders/{orderId}/complete`
+
+Marks the exchange complete, but only for the matched buyer after the order is ready for pickup.
+
+Request body:
+
+```json
+{
+  "buyerId": "buyer-1",
+  "completionNote": "Buyer confirmed the meal exchange pickup."
+}
+```
+
 ### `POST /api/orders/{orderId}/tracking`
 
 Updates meal status and optional ETA.
@@ -178,7 +191,6 @@ Supported status values:
 - `Preparing`
 - `ReadySoon`
 - `ReadyForPickup`
-- `Completed`
 - `Declined`
 
 Request body:

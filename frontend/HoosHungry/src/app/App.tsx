@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import {
+  completeOrder,
   confirmOrder,
   createOffer,
   dismissNotification,
@@ -515,19 +516,23 @@ export default function App() {
       });
   };
 
-  const handleAcceptRequest = (offerId: string) => {
-    void decideOffer(offerId, true)
-      .then((nextState) => {
-        applyDashboardState(nextState);
-        toast.success("Request accepted.");
-      })
-      .catch((error) => {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : "Unable to accept request.",
-        );
-      });
+  const handleAcceptRequest = async (offerId: string) => {
+    const toastId = toast.loading("Accepting request...");
+
+    try {
+      const nextState = await decideOffer(offerId, true);
+      applyDashboardState(nextState);
+      toast.dismiss(toastId);
+      toast.success("Request accepted.");
+    } catch (error) {
+      toast.dismiss(toastId);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to accept request.",
+      );
+      throw error;
+    }
   };
 
   const handleAcceptNotificationOffer = (
@@ -560,19 +565,23 @@ export default function App() {
       });
   };
 
-  const handleDeclineRequest = (offerId: string) => {
-    void decideOffer(offerId, false)
-      .then((nextState) => {
-        applyDashboardState(nextState);
-        toast.success("Request declined.");
-      })
-      .catch((error) => {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : "Unable to decline request.",
-        );
-      });
+  const handleDeclineRequest = async (offerId: string) => {
+    const toastId = toast.loading("Declining request...");
+
+    try {
+      const nextState = await decideOffer(offerId, false);
+      applyDashboardState(nextState);
+      toast.dismiss(toastId);
+      toast.success("Request declined.");
+    } catch (error) {
+      toast.dismiss(toastId);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to decline request.",
+      );
+      throw error;
+    }
   };
 
   const handleDeclineNotificationOffer = (
@@ -636,6 +645,25 @@ export default function App() {
         error instanceof Error
           ? error.message
           : "Unable to confirm order.";
+      toast.error(message);
+      throw error;
+    }
+  };
+
+  const handleCompleteOrder = async (orderId: string) => {
+    if (!currentUser) {
+      return;
+    }
+
+    try {
+      const nextState = await completeOrder(orderId, currentUser.id);
+      applyDashboardState(nextState);
+      toast.success("Exchange marked complete.");
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unable to complete order.";
       toast.error(message);
       throw error;
     }
@@ -905,6 +933,7 @@ export default function App() {
               notifications={notifications}
               onAcceptNotificationOffer={handleAcceptNotificationOffer}
               onBack={handleBackFromExchange}
+              onCompleteOrder={handleCompleteOrder}
               onConfirmOrder={handleConfirmOrder}
               onDeclineNotificationOffer={
                 handleDeclineNotificationOffer

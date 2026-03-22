@@ -90,6 +90,20 @@ export function confirmOrder(
   );
 }
 
+export function completeOrder(
+  orderId: string,
+  buyerId: string,
+  completionNote = "Buyer confirmed the meal exchange pickup.",
+) {
+  return fetch(`${API_BASE}/orders/${orderId}/complete`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ buyerId, completionNote }),
+  }).then((response) =>
+    parseResponse<MarketplaceDashboardState>(response),
+  );
+}
+
 export function updateOrderTracking(
   orderId: string,
   status: OrderStatus,

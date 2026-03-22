@@ -160,6 +160,12 @@ public sealed class TrackingUpdateRequest
     public DateTime? EstimatedReadyAtUtc { get; set; }
 }
 
+public sealed class CompleteOrderRequest
+{
+    public string BuyerId { get; set; } = string.Empty;
+    public string CompletionNote { get; set; } = "Buyer confirmed the meal exchange pickup.";
+}
+
 public sealed class WithdrawFundsRequest
 {
     public decimal Amount { get; set; }

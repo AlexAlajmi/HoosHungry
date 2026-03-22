@@ -1,8 +1,9 @@
+import { useState } from 'react';
 import AppNavbar from './AppNavbar';
 import SellingModeControl from './SellingModeControl';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
-import { ArrowLeft, DollarSign } from 'lucide-react';
+import { ArrowLeft, DollarSign, Loader2 } from 'lucide-react';
 import type { NotificationItem, OfferRecord, OrderRecord } from '../types';
 
 interface SellerDashboardProps {
@@ -16,8 +17,8 @@ interface SellerDashboardProps {
   onSetSellingMode: (nextValue: boolean) => Promise<void>;
   availableRequests: OfferRecord[];
   isSellingModeEnabled: boolean;
-  onAcceptRequest: (requestId: string) => void;
-  onDeclineRequest: (requestId: string) => void;
+  onAcceptRequest: (requestId: string) => Promise<void>;
+  onDeclineRequest: (requestId: string) => Promise<void>;
   myAcceptedRequests: OrderRecord[];
   onViewExchange: (exchangeId: string) => void;
   balance: number;
@@ -40,6 +41,30 @@ export default function SellerDashboard({
   onViewExchange,
   balance
 }: SellerDashboardProps) {
+  const [pendingAction, setPendingAction] = useState<{
+    requestId: string;
+    type: "accept" | "decline";
+  } | null>(null);
+
+  const handleRequestAction = async (
+    requestId: string,
+    type: "accept" | "decline",
+  ) => {
+    setPendingAction({ requestId, type });
+
+    try {
+      if (type === "accept") {
+        await onAcceptRequest(requestId);
+      } else {
+        await onDeclineRequest(requestId);
+      }
+    } finally {
+      setPendingAction((current) =>
+        current?.requestId === requestId ? null : current,
+      );
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#efefef]">
       <AppNavbar
@@ -97,17 +122,35 @@ export default function SellerDashboard({
                   </div>
                   <div className="flex gap-3">
                     <Button
-                      onClick={() => onAcceptRequest(request.id)}
+                      disabled={pendingAction?.requestId === request.id}
+                      onClick={() => void handleRequestAction(request.id, "accept")}
                       className="flex-1 bg-[#fd6500] hover:bg-[#e55a00]"
                     >
-                      Accept Request
+                      {pendingAction?.requestId === request.id &&
+                      pendingAction?.type === "accept" ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Accepting...
+                        </>
+                      ) : (
+                        "Accept Request"
+                      )}
                     </Button>
                     <Button
-                      onClick={() => onDeclineRequest(request.id)}
+                      disabled={pendingAction?.requestId === request.id}
+                      onClick={() => void handleRequestAction(request.id, "decline")}
                       className="flex-1"
                       variant="outline"
                     >
-                      Decline
+                      {pendingAction?.requestId === request.id &&
+                      pendingAction?.type === "decline" ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Declining...
+                        </>
+                      ) : (
+                        "Decline"
+                      )}
                     </Button>
                   </div>
                 </Card>

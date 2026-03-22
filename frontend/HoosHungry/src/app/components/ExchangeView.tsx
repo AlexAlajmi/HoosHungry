@@ -17,6 +17,7 @@ interface ExchangeViewProps {
   onOpenNotificationTarget: (notification: NotificationItem) => void;
   exchange: OrderRecord;
   userRole: 'buyer' | 'seller';
+  onCompleteOrder: (orderId: string) => Promise<void>;
   onConfirmOrder: (orderId: string) => Promise<void>;
   onUpdateTracking: (
     orderId: string,
@@ -36,6 +37,7 @@ export default function ExchangeView({
   onOpenNotificationTarget,
   exchange,
   userRole,
+  onCompleteOrder,
   onConfirmOrder,
   onUpdateTracking
 }: ExchangeViewProps) {
@@ -177,7 +179,7 @@ export default function ExchangeView({
                       onChange={(event) => setEtaInput(event.target.value)}
                     />
                   </div>
-                  <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
                     <Button
                       className="bg-[#fd6500] hover:bg-[#e55a00]"
                       onClick={() =>
@@ -199,17 +201,6 @@ export default function ExchangeView({
                       }
                     >
                       Mark Ready
-                    </Button>
-                    <Button
-                      className="bg-green-600 hover:bg-green-700"
-                      onClick={() =>
-                        handleTrackingUpdate(
-                          'Completed',
-                          'Exchange completed.'
-                        )
-                      }
-                    >
-                      Mark Complete
                     </Button>
                   </div>
                 </div>
@@ -243,27 +234,25 @@ export default function ExchangeView({
             {userRole === 'buyer' && exchange.status === 'ReadyForPickup' && (
               <Card className="p-6">
                 <h3 className="font-bold text-lg mb-3">Ready for Pickup</h3>
-                <p className="text-gray-700">
-                  The seller marked the meal exchange ready. Coordinate pickup and watch for the final completion update.
+                <p className="text-gray-700 mb-4">
+                  The seller marked the meal exchange ready. After you receive the meal, confirm pickup here to complete the exchange.
                 </p>
+                <Button
+                  onClick={() => onCompleteOrder(exchange.id)}
+                  className="w-full bg-green-600 hover:bg-green-700 h-12"
+                >
+                  <CheckCircle2 className="h-5 w-5 mr-2" />
+                  Confirm Pickup
+                </Button>
               </Card>
             )}
 
             {userRole === 'seller' && exchange.status === 'ReadyForPickup' && (
               <Card className="p-6">
-                <h3 className="font-bold text-lg mb-3">Ready to Finish</h3>
-                <p className="text-gray-700 mb-4">
-                  After the handoff is done, mark the exchange complete.
+                <h3 className="font-bold text-lg mb-3">Waiting on Buyer</h3>
+                <p className="text-gray-700">
+                  The exchange is ready for pickup. The buyer must confirm pickup to complete the exchange.
                 </p>
-                <Button
-                  onClick={() =>
-                    handleTrackingUpdate('Completed', 'Exchange completed.')
-                  }
-                  className="w-full bg-green-600 hover:bg-green-700 h-12"
-                >
-                  <CheckCircle2 className="h-5 w-5 mr-2" />
-                  Mark Exchange Complete
-                </Button>
               </Card>
             )}
           </>

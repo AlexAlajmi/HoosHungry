@@ -5,6 +5,7 @@ public static class OrderEndpoints
     public static RouteGroupBuilder MapOrderEndpoints(this RouteGroupBuilder api)
     {
         api.MapPost("/orders/{orderId}/confirm", ConfirmOrderAsync);
+        api.MapPost("/orders/{orderId}/complete", CompleteOrderAsync);
         api.MapPost("/orders/{orderId}/tracking", UpdateTrackingAsync);
         return api;
     }
@@ -99,6 +100,13 @@ public static class OrderEndpoints
     {
         return MarketplaceData.ExecuteAsync(async () =>
         {
+            if (request.Status == OrderStatus.Completed)
+            {
+                throw new InvalidOperationException(
+                    "Only the buyer can complete the exchange."
+                );
+            }
+
             var client = httpClientFactory.CreateClient();
             var state = await MarketplaceData.LoadDashboardStateAsync(client, settings, cancellationToken);
             var order = state.Orders.SingleOrDefault(item => item.Id == orderId)
@@ -159,6 +167,87 @@ public static class OrderEndpoints
                     UserId = order.SellerId,
                     Title = "Tracking update sent",
                     Message = $"Buyer was notified: {buyerMessage}",
+                    ActionType = "ViewOrder",
+                    ActionTargetId = order.Id,
+                    CreatedAtUtc = DateTime.UtcNow,
+                },
+                cancellationToken
+            );
+
+            return await MarketplaceData.LoadDashboardStateAsync(client, settings, cancellationToken);
+        });
+    }
+
+    private static Task<IResult> CompleteOrderAsync(
+        string orderId,
+        CompleteOrderRequest request,
+        IHttpClientFactory httpClientFactory,
+        SupabaseSettings settings,
+        CancellationToken cancellationToken)
+    {
+        return MarketplaceData.ExecuteAsync(async () =>
+        {
+            var client = httpClientFactory.CreateClient();
+            var state = await MarketplaceData.LoadDashboardStateAsync(client, settings, cancellationToken);
+            var order = state.Orders.SingleOrDefault(item => item.Id == orderId)
+                ?? throw new InvalidOperationException("Order not found.");
+
+            if (!string.Equals(order.BuyerId, request.BuyerId, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Only the matched buyer can complete this exchange.");
+            }
+
+            if (order.Status != OrderStatus.ReadyForPickup)
+            {
+                throw new InvalidOperationException("The exchange can only be completed after it is ready for pickup.");
+            }
+
+            order.Status = OrderStatus.Completed;
+            order.EstimatedReadyAtUtc = null;
+            await MarketplaceData.PatchOrderAsync(client, settings, order, cancellationToken);
+
+            await MarketplaceData.InsertTrackingEventAsync(
+                client,
+                settings,
+                order.Id,
+                new TrackingEvent
+                {
+                    Id = MarketplaceData.NewId("track"),
+                    Status = OrderStatus.Completed,
+                    Label = MarketplaceData.BuildTrackingLabel(OrderStatus.Completed),
+                    Detail = string.IsNullOrWhiteSpace(request.CompletionNote)
+                        ? "Buyer confirmed the meal exchange pickup."
+                        : request.CompletionNote,
+                    CreatedAtUtc = DateTime.UtcNow,
+                },
+                cancellationToken
+            );
+
+            await MarketplaceData.InsertNotificationAsync(
+                client,
+                settings,
+                new NotificationItem
+                {
+                    Id = MarketplaceData.NewId("note"),
+                    UserId = order.SellerId,
+                    Title = "Buyer completed the exchange",
+                    Message = $"{order.BuyerName} confirmed the pickup was completed.",
+                    ActionType = "ViewOrder",
+                    ActionTargetId = order.Id,
+                    CreatedAtUtc = DateTime.UtcNow,
+                },
+                cancellationToken
+            );
+
+            await MarketplaceData.InsertNotificationAsync(
+                client,
+                settings,
+                new NotificationItem
+                {
+                    Id = MarketplaceData.NewId("note"),
+                    UserId = order.BuyerId,
+                    Title = "Exchange completed",
+                    Message = "You confirmed the meal exchange pickup.",
                     ActionType = "ViewOrder",
                     ActionTargetId = order.Id,
                     CreatedAtUtc = DateTime.UtcNow,
